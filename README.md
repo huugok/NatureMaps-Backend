@@ -175,6 +175,7 @@ integración real con el **Inventario de Arbolado** del Ayuntamiento de Valènci
 |--------------------------------|--------|-------------------------------------------------------------------------------|
 | `/trees/import?limit=200`      | POST   | Descarga `limit` árboles desde los datos abiertos de Valencia y los guarda en la base de datos (ignora los que ya existen). Devuelve `{ fetched, stored }`. |
 | `/trees?limit=200`              | GET    | Devuelve los árboles guardados en la base de datos como JSON. **Se puede abrir directamente en el navegador** (no requiere parámetros). |
+| `/trees/:id`                      | GET    | Devuelve un árbol concreto por su id, junto con el contexto cultural de su especie (si ya se ha enriquecido con `POST /species/enrich`). **Se puede abrir directamente en el navegador**, p. ej. `http://localhost:3000/trees/1`. Devuelve 404 si el id no existe. |
 
 Con el servidor en marcha (`npm run dev`):
 

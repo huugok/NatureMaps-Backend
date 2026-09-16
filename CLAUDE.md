@@ -119,6 +119,11 @@ provenance.
     `{ fetched, stored }`.
   - `GET /trees?limit=200` — plain GET, no required params, so it's directly browser-openable at
     `http://localhost:3000/trees`. Returns `{ total, returned, limit, trees }`.
+  - `GET /trees/:id` — a single tree by its database id, joined with its species' cultural data
+    (via `toBinomialName` matching against the `species` table). Browser-openable, e.g.
+    `http://localhost:3000/trees/1`. Returns the tree row plus a `species` field (`null` if that
+    species hasn't been enriched yet via `POST /species/enrich`). 404 for an unknown id, 400 for a
+    non-numeric one.
 
 When extending this pattern to other sources (GBIF, OSM Overpass, BDBCV), mirror the same shape:
 one service module per source doing fetch + normalize, a dedicated table with a `source`/
