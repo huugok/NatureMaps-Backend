@@ -19,6 +19,7 @@ sino también a "¿qué hay interesante que ver cerca y por qué es relevante pa
 - [Scripts disponibles](#scripts-disponibles)
 - [Base de datos](#base-de-datos)
 - [Prueba de concepto: importación de arbolado](#prueba-de-concepto-importación-de-arbolado)
+- [Prueba de concepto: enriquecimiento cultural de especies](#prueba-de-concepto-enriquecimiento-cultural-de-especies)
 - [Fuentes de datos abiertos](#fuentes-de-datos-abiertos)
 - [Documentación adicional](#documentación-adicional)
 
@@ -75,12 +76,15 @@ src/
     index.ts          Cliente de Drizzle, conecta mediante DATABASE_URL
     schema.ts          Definición de tablas de Drizzle (users, trees)
   controllers/
-    treesController.ts  Controladores del endpoint /trees (importar y listar)
+    treesController.ts    Controladores del endpoint /trees (importar y listar)
+    speciesController.ts   Controladores del endpoint /species (enriquecer y listar)
   routes/
     trees.ts              Router de Express montado en /trees
+    species.ts              Router de Express montado en /species
   middlewares/          Middlewares de Express (por implementar)
   services/
-    valenciaOpenData.ts   Obtiene y normaliza datos de arbolado de Valencia
+    valenciaOpenData.ts    Obtiene y normaliza datos de arbolado de Valencia
+    speciesEnrichment.ts    Obtiene contexto cultural/enciclopédico de especies desde Wikipedia
 docs/                    Documentación de planificación del proyecto
 ```
 
@@ -186,6 +190,42 @@ http://localhost:3000/trees
 ```
 
 La respuesta tiene la forma `{ "total": 20, "returned": 20, "limit": 200, "trees": [...] }`.
+
+## Prueba de concepto: enriquecimiento cultural de especies
+
+Segunda prueba de concepto que añade contexto cultural/enciclopédico por **especie** (no por
+árbol individual, ya que varios árboles comparten la misma especie), obtenido de Wikipedia.
+
+Se descartó pedir directamente a una IA generativa que "inventara" contenido cultural: sin
+datos reales de respaldo, un LLM puede producir afirmaciones plausibles pero falsas sobre
+historia o tradiciones locales. En su lugar, se usa el extracto real de Wikipedia (API REST
+pública, gratuita y sin necesidad de clave), que además incluye el identificador de Wikidata
+correspondiente.
+
+- **Normalización de nombres**: los nombres científicos del arbolado de Valencia a veces
+  incluyen cultivares o el sexo del ejemplar (p. ej. `"Morus alba 'Fruitless'"`,
+  `"Phoenix dactylifera hembra"`), que no tienen artículo propio en Wikipedia. El servicio
+  reduce estos nombres al binomio género + especie antes de realizar la búsqueda.
+- **Tabla**: `species` en [src/db/schema.ts](src/db/schema.ts), con `scientific_name`
+  (el binomio normalizado) como clave única.
+
+### Endpoints disponibles
+
+| Endpoint            | Método | Descripción                                                                    |
+|-----------------------|--------|-----------------------------------------------------------------------------------|
+| `/species/enrich`      | POST   | Obtiene las especies distintas ya almacenadas en `trees`, descarta las que ya tienen datos guardados y enriquece el resto desde Wikipedia. Devuelve `{ totalSpecies, alreadyStored, enriched, notFound, failed }`. |
+| `/species`              | GET    | Devuelve las especies con contexto cultural guardado en la base de datos. **Se puede abrir directamente en el navegador**. |
+
+```bash
+# Enriquecer con contexto cultural las especies presentes en los árboles ya importados
+curl -X POST "http://localhost:3000/species/enrich"
+```
+
+Y para consultarlas, abre en el navegador:
+
+```
+http://localhost:3000/species
+```
 
 ## Fuentes de datos abiertos
 

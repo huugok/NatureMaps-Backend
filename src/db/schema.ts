@@ -22,3 +22,19 @@ export const trees = pgTable('trees', {
   source: text('source').notNull().default('VALENCIA_OPEN_DATA'),
   importedAt: timestamp('imported_at').defaultNow().notNull(),
 })
+
+// Cultural/encyclopedic enrichment per species (not per tree), fetched from Wikidata + Wikipedia.
+// Keyed by the normalized binomial name (genus + species), since trees.scientific_name may include
+// cultivar/sex qualifiers that don't map to a Wikipedia article on their own.
+export const species = pgTable('species', {
+  id: serial('id').primaryKey(),
+  scientificName: text('scientific_name').notNull().unique(),
+  wikidataId: text('wikidata_id'),
+  wikipediaLang: text('wikipedia_lang'),
+  wikipediaUrl: text('wikipedia_url'),
+  description: text('description'),
+  culturalExtract: text('cultural_extract'),
+  imageUrl: text('image_url'),
+  source: text('source').notNull().default('WIKIPEDIA'),
+  fetchedAt: timestamp('fetched_at').defaultNow().notNull(),
+})

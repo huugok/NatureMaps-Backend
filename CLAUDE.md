@@ -79,12 +79,15 @@ src/
     index.ts         Drizzle client, connects via DATABASE_URL
     schema.ts         Drizzle table definitions (users, trees)
   controllers/
-    treesController.ts  Request handlers for /trees (import + list)
+    treesController.ts    Request handlers for /trees (import + list)
+    speciesController.ts   Request handlers for /species (enrich + list)
   routes/
     trees.ts             Express router mounted at /trees
+    species.ts             Express router mounted at /species
   middlewares/         (empty scaffold — Express middleware goes here)
   services/
-    valenciaOpenData.ts  Fetches + parses tree data from Valencia's open data API
+    valenciaOpenData.ts    Fetches + parses tree data from Valencia's open data API
+    speciesEnrichment.ts    Fetches cultural/encyclopedic species data from Wikipedia
 docs/                  Planning docs (requirements, data sources, dev environment)
 ```
 
@@ -120,6 +123,38 @@ provenance.
 When extending this pattern to other sources (GBIF, OSM Overpass, BDBCV), mirror the same shape:
 one service module per source doing fetch + normalize, a dedicated table with a `source`/
 `external_id`/`imported_at` provenance triplet, and idempotent inserts.
+
+## Species cultural enrichment (Wikipedia + Wikidata)
+
+A second ingestion pipeline that fetches free-text cultural/encyclopedic context per **species**
+(not per tree — many tree rows share a species) from Wikipedia's public REST summary API.
+
+- **Why Wikipedia over asking an LLM directly**: generating "cultural context" from an LLM with no
+  grounding risks inventing plausible-sounding but false claims about local history/traditions.
+  Wikipedia's summary endpoint returns real encyclopedia text instead, and also happens to include
+  the linked Wikidata id (`wikibase_item`), so no separate Wikidata call is needed for this POC.
+- **Source**: `https://{lang}.wikipedia.org/api/rest_v1/page/summary/{title}` — free, no API key.
+  Tries `es` first, falls back to `en`. Requires a descriptive `User-Agent` header per Wikimedia's
+  API etiquette (see `USER_AGENT` in the service file).
+- **Name normalization**: `trees.scientific_name` values from Valencia Open Data often include
+  cultivar/sex qualifiers that don't have their own Wikipedia article (e.g. `"Morus alba
+  'Fruitless'"`, `"Phoenix dactylifera hembra"`). `toBinomialName()` in
+  [src/services/speciesEnrichment.ts](src/services/speciesEnrichment.ts) reduces these to the
+  genus + species binomial before looking anything up.
+- **Schema**: `species` table in [src/db/schema.ts](src/db/schema.ts), keyed by the normalized
+  binomial name (unique). One table, not split by source — each species has at most one relevant
+  Wikidata id/Wikipedia article for this use case, so a join across two tables would add nothing.
+- **Endpoints** (mounted at `/species`):
+  - `POST /species/enrich` — reads distinct scientific names out of the `trees` table, normalizes
+    and dedupes them, skips species already stored, and enriches the rest. Returns
+    `{ totalSpecies, alreadyStored, enriched, notFound, failed }`.
+  - `GET /species` — browser-openable, returns `{ total, species }` with every stored record
+    (`culturalExtract`, `imageUrl`, `wikipediaUrl`, `wikidataId`, etc).
+- **Encoding note**: if you ever see mangled accented characters (e.g. `Ã©` in place of `é`) while
+  inspecting API responses, check the tool in the pipeline first — Express, the Neon driver, and
+  Node's `fetch()` all handle UTF-8 correctly here; `python3 -m json.tool` in this project's Git
+  Bash environment was observed misreading stdin encoding and introducing exactly that kind of
+  mojibake on inspection, without corrupting the actual stored/served data.
 
 ## Environment variables
 

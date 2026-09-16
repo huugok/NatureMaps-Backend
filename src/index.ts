@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import cors from 'cors'
 import express from 'express'
+import { speciesRouter } from './routes/species.js'
 import { treesRouter } from './routes/trees.js'
 
 const app = express()
@@ -13,6 +14,7 @@ app.get('/health', (_req, res) => {
 })
 
 app.use('/trees', treesRouter)
+app.use('/species', speciesRouter)
 
 const PORT = Number(process.env.PORT) || 3000
 
