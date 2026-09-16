@@ -18,6 +18,7 @@ sino también a "¿qué hay interesante que ver cerca y por qué es relevante pa
 - [Variables de entorno](#variables-de-entorno)
 - [Scripts disponibles](#scripts-disponibles)
 - [Base de datos](#base-de-datos)
+- [Prueba de concepto: importación de arbolado](#prueba-de-concepto-importación-de-arbolado)
 - [Fuentes de datos abiertos](#fuentes-de-datos-abiertos)
 - [Documentación adicional](#documentación-adicional)
 
@@ -69,19 +70,23 @@ modelo de datos propio de la aplicación.
 
 ```
 src/
-  index.ts          Punto de entrada de la aplicación Express (expone GET /health)
+  index.ts          Punto de entrada de la aplicación Express (GET /health, monta /trees)
   db/
     index.ts          Cliente de Drizzle, conecta mediante DATABASE_URL
-    schema.ts          Definición de tablas de Drizzle
-  controllers/        Controladores de las rutas (por implementar)
-  routes/               Definición de rutas de Express (por implementar)
+    schema.ts          Definición de tablas de Drizzle (users, trees)
+  controllers/
+    treesController.ts  Controladores del endpoint /trees (importar y listar)
+  routes/
+    trees.ts              Router de Express montado en /trees
   middlewares/          Middlewares de Express (por implementar)
-  services/              Lógica de negocio e integraciones externas (por implementar)
+  services/
+    valenciaOpenData.ts   Obtiene y normaliza datos de arbolado de Valencia
 docs/                    Documentación de planificación del proyecto
 ```
 
-> El proyecto se encuentra en una fase inicial de scaffolding: los directorios `controllers`,
-> `routes`, `middlewares` y `services` solo contienen un `.gitkeep` como marcador.
+> El proyecto se encuentra en una fase inicial de scaffolding: el directorio `middlewares` solo
+> contiene un `.gitkeep` como marcador. El módulo de árboles (`trees`) es el primer ejemplo real de
+> la capa routes → controllers → services descrita más abajo.
 
 ## Puesta en marcha
 
@@ -146,6 +151,41 @@ Flujo de trabajo recomendado al modificar el esquema:
 1. Editar las tablas en `src/db/schema.ts`.
 2. Ejecutar `npm run db:generate` para crear la migración correspondiente.
 3. Ejecutar `npm run db:migrate` para aplicarla.
+
+## Prueba de concepto: importación de arbolado
+
+Como ejemplo funcional de extremo a extremo del patrón de ingesta descrito en
+[docs/Flower MAP — Data Sources.md](<docs/Flower MAP — Data Sources.md>) (obtener datos de una
+fuente externa, normalizarlos y guardarlos con su procedencia), el backend incluye una
+integración real con el **Inventario de Arbolado** del Ayuntamiento de València.
+
+- **Fuente**: endpoint ArcGIS REST del Ayuntamiento de València, sin necesidad de API key
+  (`geoportal.valencia.es/.../MapServer/151/query`), con unos 157 000 árboles en total.
+- **Tabla**: `trees` en [src/db/schema.ts](src/db/schema.ts), con `external_id` (el `idarbol`
+  original) como clave única para evitar duplicados, y campos de procedencia (`source`,
+  `imported_at`).
+
+### Endpoints disponibles
+
+| Endpoint                      | Método | Descripción                                                                 |
+|--------------------------------|--------|-------------------------------------------------------------------------------|
+| `/trees/import?limit=200`      | POST   | Descarga `limit` árboles desde los datos abiertos de Valencia y los guarda en la base de datos (ignora los que ya existen). Devuelve `{ fetched, stored }`. |
+| `/trees?limit=200`              | GET    | Devuelve los árboles guardados en la base de datos como JSON. **Se puede abrir directamente en el navegador** (no requiere parámetros). |
+
+Con el servidor en marcha (`npm run dev`):
+
+```bash
+# Importar 20 árboles reales de Valencia a la base de datos
+curl -X POST "http://localhost:3000/trees/import?limit=20"
+```
+
+Y para consultar lo que se ha guardado, basta con abrir en el navegador:
+
+```
+http://localhost:3000/trees
+```
+
+La respuesta tiene la forma `{ "total": 20, "returned": 20, "limit": 200, "trees": [...] }`.
 
 ## Fuentes de datos abiertos
 

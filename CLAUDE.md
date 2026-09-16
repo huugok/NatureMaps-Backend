@@ -74,22 +74,52 @@ Non-functional constraints: mobile-first usage, must tolerate limited/intermitte
 
 ```
 src/
-  index.ts          Express app entry point (currently exposes GET /health)
+  index.ts          Express app entry point (GET /health, mounts /trees)
   db/
     index.ts         Drizzle client, connects via DATABASE_URL
-    schema.ts         Drizzle table definitions
-  controllers/        (empty scaffold — request handlers go here)
-  routes/              (empty scaffold — Express routers go here)
+    schema.ts         Drizzle table definitions (users, trees)
+  controllers/
+    treesController.ts  Request handlers for /trees (import + list)
+  routes/
+    trees.ts             Express router mounted at /trees
   middlewares/         (empty scaffold — Express middleware goes here)
-  services/            (empty scaffold — business logic / external API integrations go here)
+  services/
+    valenciaOpenData.ts  Fetches + parses tree data from Valencia's open data API
 docs/                  Planning docs (requirements, data sources, dev environment)
 ```
 
-The `controllers`, `routes`, `middlewares`, and `services` directories currently only contain
-`.gitkeep` placeholders — the project is an early-stage scaffold. When adding features, follow this
-layering: **routes** wire HTTP paths to **controllers**, controllers call **services** (which hold
-business logic and talk to external APIs/DB), and **middlewares** handle cross-cutting concerns
-(auth, validation, error handling).
+The `middlewares` directory currently only contains a `.gitkeep` placeholder. The `trees` feature
+(below) is the first real example of the intended layering: **routes** wire HTTP paths to
+**controllers**, controllers call **services** (which hold business logic and talk to external
+APIs/DB), and **middlewares** handle cross-cutting concerns (auth, validation, error handling).
+Follow this same pattern for new features rather than putting logic directly in route handlers.
+
+## Trees proof of concept (Valencia Open Data)
+
+A working end-to-end example of the ingestion pattern described in
+`docs/Flower MAP — Data Sources.md`: fetch from an external source, normalize, store with
+provenance.
+
+- **Source**: Valencia City Council's Arbolado (tree inventory) ArcGIS REST endpoint —
+  `https://geoportal.valencia.es/server/rest/services/OPENDATA/MedioAmbiente/MapServer/151/query`.
+  No API key required. ~157k trees total; requests are capped via `resultRecordCount`.
+- **Service**: [src/services/valenciaOpenData.ts](src/services/valenciaOpenData.ts) —
+  `fetchValenciaTrees(limit)` requests GeoJSON and maps the raw ArcGIS fields (`idarbol`,
+  `nom_botanico`, `nom_comu_c`, `nom_comu_v`, `distrito`, `barrio`, point geometry) onto a plain
+  `ValenciaTree` shape.
+- **Schema**: `trees` table in [src/db/schema.ts](src/db/schema.ts) — `externalId` (the source's
+  `idarbol`, unique) is the dedup key, plus `source: 'VALENCIA_OPEN_DATA'` and `importedAt` for
+  provenance, per the data model in the data sources doc.
+- **Endpoints** (mounted at `/trees` in [src/index.ts](src/index.ts)):
+  - `POST /trees/import?limit=200` — fetches `limit` trees from Valencia Open Data and inserts new
+    ones (`onConflictDoNothing` on `externalId`, so re-running is safe and idempotent). Returns
+    `{ fetched, stored }`.
+  - `GET /trees?limit=200` — plain GET, no required params, so it's directly browser-openable at
+    `http://localhost:3000/trees`. Returns `{ total, returned, limit, trees }`.
+
+When extending this pattern to other sources (GBIF, OSM Overpass, BDBCV), mirror the same shape:
+one service module per source doing fetch + normalize, a dedicated table with a `source`/
+`external_id`/`imported_at` provenance triplet, and idempotent inserts.
 
 ## Environment variables
 
@@ -129,3 +159,6 @@ npm run db:studio         # open Drizzle Studio to browse the database
   `docs/Flower MAP — Data Sources.md`.
 - **No test suite or linter is configured yet** — if you add one, wire it into `package.json`
   scripts and mention it here.
+- **Known issue**: `npm run build` (`tsc`) can fail on Windows with
+  `Unable to resolve @typescript/typescript-win32-x64` — TypeScript 7's native compiler is missing
+  its platform binary package. `npm run dev` (`tsx`) is unaffected since it doesn't invoke `tsc`.

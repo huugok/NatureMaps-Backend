@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express'
+import { sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { trees } from '../db/schema.js'
 import { fetchValenciaTrees } from '../services/valenciaOpenData.js'
@@ -22,7 +23,12 @@ export async function importTrees(req: Request, res: Response) {
 }
 
 export async function listTrees(req: Request, res: Response) {
-  const limit = Number(req.query.limit) || 50
-  const rows = await db.select().from(trees).limit(limit)
-  res.json(rows)
+  const limit = Number(req.query.limit) || 200
+
+  const [rows, [{ count }]] = await Promise.all([
+    db.select().from(trees).limit(limit),
+    db.select({ count: sql<number>`count(*)::int` }).from(trees),
+  ])
+
+  res.json({ total: count, returned: rows.length, limit, trees: rows })
 }
