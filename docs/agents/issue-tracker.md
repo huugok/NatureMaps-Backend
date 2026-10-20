@@ -7,14 +7,35 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 - **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
 - **Read an issue**: `gh issue view <number> --comments`, filtering comments by `jq` and also fetching labels.
 - **List issues**: `gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'` with appropriate `--label` and `--state` filters.
-- **Make an issue a sub-issue of a parent**: `gh issue create --parent <parent> ...`, or `gh issue edit <parent> --add-sub-issue <child>` afterwards (`gh` 2.94+). Older `gh`: `gh api --method POST repos/<owner>/<repo>/issues/<parent>/sub_issues -F sub_issue_id=<child-db-id>` (database id, as in **Blocking** below). Without sub-issues, put `Part of #<parent>` at the top of the child body.
+- **Make an issue a sub-issue of a parent**: `scripts/tickets.sh parent <child> <parent>`. Older `gh`: `gh api --method POST repos/<owner>/<repo>/issues/<parent>/sub_issues -F sub_issue_id=<child-db-id>` (database id, as in **Blocking** below). Without sub-issues, put `Part of #<parent>` at the top of the child body.
 - **Comment on an issue**: `gh issue comment <number> --body "..."`
 - **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
 - **Close**: `gh issue close <number> --comment "..."`
 
 Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
 
+## Native relationships (blockers and sub-issues)
+
+GitHub renders dependencies in the issue sidebar (**Blocked by** / **Blocking**) and sub-issues
+inside the parent issue. Use the repo helper instead of handling internal ids by hand:
+
+```bash
+scripts/tickets.sh create "Import Valencia tree inventory" "Ticket body"   # ready-for-agent label
+scripts/tickets.sh link 12 10 11        # #12 is blocked by #10 and #11
+scripts/tickets.sh parent 12 8          # #12 becomes a sub-issue of #8 (the spec)
+scripts/tickets.sh unlink 12 11         # drops a blocker
+scripts/tickets.sh show 12              # state, labels, blockers and sub-issues
+```
+
+Work rule: a ticket with open blockers is not started. The **frontier** is the set of tickets with
+no open blockers; take the next one in order from there.
+
+REST equivalent: `POST /issues/{child}/dependencies/blocked_by` with `issue_id` (numeric database
+id, not `#number`) and `POST /issues/{parent}/sub_issues` with `sub_issue_id`. `GET` on the same
+paths lists the relationships; `issue_dependencies_summary` lags, so don't use it to verify.
+
 ## Pull requests as a triage surface
+
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
 

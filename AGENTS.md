@@ -172,6 +172,7 @@ configuración de protección y el versionado están en `docs/agents/git-workflo
 - Commits en imperativo con prefijo `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`.
 - Versionado por tags semver `vX.Y.Z` en cada repo; subir `package.json` solo en la PR de release.
 - Issues: GitHub Issues vía `gh`, repo inferido del remote (`docs/agents/issue-tracker.md`).
+  Bloqueos y sub-issues con `scripts/tickets.sh` (`link`, `parent`, `show`).
 - Este checkout es el principal del repo: para trabajo en paralelo, usar worktrees en vez de
   ramas sin commitear en el árbol principal.
 - No hacer `git push` ni abrir PRs sin que lo pida el usuario.
