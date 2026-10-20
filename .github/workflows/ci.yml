@@ -1,0 +1,51 @@
+name: CI
+
+# Un único check, "ci", que siempre reporta.
+# Si el PR no toca código (solo docs, AGENTS.md, .github, etc.) termina en verde sin compilar.
+# Así se puede exigir como status check obligatorio sin bloquear PRs de documentación.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detectar cambios de código
+        id: changes
+        run: |
+          git fetch --no-tags origin "${{ github.base_ref }}"
+          if git diff --name-only "origin/${{ github.base_ref }}...HEAD" |
+             grep -qE '^(src/|package\.json|package-lock\.json|tsconfig\.json|drizzle\.config\.ts)'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+            echo "Sin cambios de código: no se compila."
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.changes.outputs.code == 'true'
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependencias
+        if: steps.changes.outputs.code == 'true'
+        run: npm ci
+
+      - name: Comprobar que compila
+        if: steps.changes.outputs.code == 'true'
+        run: npx tsc --noEmit

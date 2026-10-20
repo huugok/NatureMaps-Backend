@@ -34,7 +34,7 @@ Estado aplicado desde 2026-10-20 en ambos repos:
 | Dismiss stale approvals on new commits | sí | una aprobación no vale para código nuevo |
 | Require conversation resolution | sí | no quedan comentarios abiertos al mergear |
 | Require branches to be up to date | sí, junto a los checks | evita merges contra `main` viejo |
-| Require status checks | pendiente | no hay CI todavía; activar cuando exista |
+| Require status checks | `ci` | compila si hay código; con solo docs pasa al instante |
 | Require linear history | sí | `main` sin merges en cascada |
 | Block force pushes | sí | no reescribir historia publicada |
 | Block deletions | sí | `main` no se borra |
@@ -53,6 +53,22 @@ PR. Es intencional.
   compatible; `PATCH` correcciones.
 - La versión de `package.json` se sube en la PR de release, no en cada PR de feature.
 - Las releases se marcan desde `main` ya mergeado, nunca desde una rama de feature.
+
+## Integración continua
+
+`.github/workflows/ci.yml` corre en cada PR y publica un único check, `ci`:
+
+- Si el diff toca código (`src/`, `package.json`, `package-lock.json`, `tsconfig.json`, `drizzle.config.ts`): `npm ci` y comprobación de tipos (`npx tsc`) **sin emitir**: cualquier error de compilación
+  pone el check en rojo.
+- Si solo hay documentación (`.md`, `docs/`, `AGENTS.md`, `.github/`, `LICENSE`): el check pasa sin
+  instalar dependencias ni compilar.
+
+El check **siempre reporta**, y por eso se puede exigir en la protección de `main` sin bloquear PRs
+de documentación. Si el workflow no llegara a correr, el check quedaría en espera y el merge
+bloqueado; por eso no se usan filtros `paths:` en el disparador.
+
+El check no genera artefactos ni hace bundling: solo verifica que no haya errores de compilación.
+Añadir tests, lint o el build de producción es un paso aparte.
 
 ## Cómo aplicar la protección
 
@@ -117,7 +133,8 @@ done
 - Protección de `main`: **activa desde 2026-10-20** en ambos repos. Aplica también a admins, sin
   force-push, sin borrado, historial lineal y conversaciones resueltas. Aprobaciones requeridas:
   **0** (subir a 1 cuando haya una segunda persona con permiso de escritura).
-- Status checks obligatorios: **ninguno todavía** (no hay CI). Al añadirlo, exigir el check.
+- Status checks obligatorios: **`ci`** desde 2026-10-20. Compila solo si el PR toca código;
+  con solo documentación termina en verde sin instalar nada.
 - Etiquetas de triage: **creadas** (`needs-triage`, `needs-info`, `ready-for-agent`,
   `ready-for-human`); `wontfix`, `bug` y `enhancement` ya existían.
 - PRs abiertas: frontend `#1` (`F16_Barra_Inferior` → `main`), sin mergear.
