@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Identificar plantas · Nature MAPS</title>
+<style>
+  :root {
+    --bg: #f5f7f2; --card: #ffffff; --text: #1d2b21; --muted: #5d6b61;
+    --accent: #2f7d4a; --accent-text: #ffffff; --border: #dbe3d9; --bar: #e6ece4; --error: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121a15; --card: #1a251e; --text: #e6efe8; --muted: #9fb0a4;
+      --accent: #5bbd7b; --accent-text: #0c1a11; --border: #2a3a2f; --bar: #26352b; --error: #f2928c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, sans-serif; }
+  main { max-width: 640px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .drop { display: block; text-align: center; border: 2px dashed var(--border); border-radius: 12px; padding: 24px 12px; cursor: pointer; color: var(--muted); }
+  .drop:hover, .drop:focus-within { border-color: var(--accent); }
+  .drop input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .item { display: flex; gap: 12px; align-items: center; margin-top: 12px; }
+  .item img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+  .item .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .9rem; }
+  select, button { font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+  button { cursor: pointer; }
+  button.primary { width: 100%; margin-top: 16px; background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; padding: 12px; }
+  button.primary:disabled { opacity: .5; cursor: not-allowed; }
+  .error { color: var(--error); font-weight: 600; }
+  .result + .result { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .sci { font-style: italic; font-weight: 600; }
+  .best { display: inline-block; font-size: .75rem; font-weight: 600; background: var(--accent); color: var(--accent-text); border-radius: 999px; padding: 1px 8px; margin-left: 6px; font-style: normal; }
+  .meta { color: var(--muted); font-size: .9rem; }
+  .bar { height: 8px; background: var(--bar); border-radius: 999px; overflow: hidden; margin: 6px 0; }
+  .bar > span { display: block; height: 100%; background: var(--accent); }
+  a { color: var(--accent); }
+  .hint { color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Identificar plantas</h1>
+  <p class="sub">Sube de 1 a 5 fotos de la misma planta (JPG o PNG) y elige qué parte se ve en cada una.</p>
+
+  <div class="card">
+    <label class="drop">
+      <input id="file" type="file" accept="image/jpeg,image/png" multiple>
+      <strong>Elegir fotos</strong><br><span class="hint">o arrástralas aquí</span>
+    </label>
+    <div id="list"></div>
+    <button id="go" class="primary" disabled>Identificar</button>
+  </div>
+
+  <div id="out"></div>
+</main>
+
+<script>
+const MAX_IMAGES = 5
+const MAX_BYTES = 10 * 1024 * 1024
+const ORGANS = [['auto', 'Automático'], ['leaf', 'Hoja'], ['flower', 'Flor'], ['fruit', 'Fruto'], ['bark', 'Corteza']]
+
+const fileInput = document.getElementById('file')
+const list = document.getElementById('list')
+const go = document.getElementById('go')
+const out = document.getElementById('out')
+const drop = document.querySelector('.drop')
+let items = []
+
+function el(tag, props, children) {
+  const node = document.createElement(tag)
+  Object.assign(node, props || {})
+  for (const child of children || []) node.append(child)
+  return node
+}
+
+function showMessage(text) {
+  out.replaceChildren(el('div', { className: 'card' }, [el('p', { className: 'error', textContent: text })]))
+}
+
+function addFiles(files) {
+  for (const file of files) {
+    if (items.length >= MAX_IMAGES) { showMessage('Máximo ' + MAX_IMAGES + ' fotos.'); break }
+    if (!['image/jpeg', 'image/png'].includes(file.type)) { showMessage('Solo se admiten imágenes JPG o PNG.'); continue }
+    if (file.size > MAX_BYTES) { showMessage('Cada foto debe pesar menos de 10 MB.'); continue }
+    items.push({ file, organ: 'auto', url: URL.createObjectURL(file) })
+  }
+  fileInput.value = ''
+  renderList()
+}
+
+function renderList() {
+  list.replaceChildren(...items.map((item, index) => {
+    const select = el('select', {}, ORGANS.map(([value, label]) => el('option', { value, textContent: label })))
+    select.value = item.organ
+    select.addEventListener('change', () => { item.organ = select.value })
+    const remove = el('button', { type: 'button', textContent: '✕', title: 'Quitar' })
+    remove.addEventListener('click', () => { URL.revokeObjectURL(item.url); items.splice(index, 1); renderList() })
+    return el('div', { className: 'item' }, [
+      el('img', { src: item.url, alt: '' }),
+      el('span', { className: 'name', textContent: item.file.name }),
+      select, remove,
+    ])
+  }))
+  go.disabled = items.length === 0
+}
+
+fileInput.addEventListener('change', () => addFiles(fileInput.files))
+drop.addEventListener('dragover', (event) => event.preventDefault())
+drop.addEventListener('drop', (event) => { event.preventDefault(); addFiles(event.dataTransfer.files) })
+
+go.addEventListener('click', async () => {
+  const form = new FormData()
+  for (const item of items) form.append('images', item.file, item.file.name)
+  for (const item of items) form.append('organs', item.organ)
+
+  go.disabled = true
+  go.textContent = 'Identificando…'
+  out.replaceChildren()
+  try {
+    const response = await fetch('/plants/identify?lang=es', { method: 'POST', body: form })
+    const data = await response.json()
+    if (!response.ok) { showMessage(data.error || 'Error ' + response.status); return }
+    renderResults(data)
+  } catch {
+    showMessage('No se ha podido contactar con el servidor. ¿Está arrancado?')
+  } finally {
+    go.textContent = 'Identificar'
+    go.disabled = items.length === 0
+  }
+})
+
+function renderResults(data) {
+  const card = el('div', { className: 'card' })
+  if (!data.results.length) {
+    card.append(el('p', { textContent: 'No hay coincidencias para estas fotos.' }))
+  }
+  data.results.forEach((result, index) => {
+    const percent = Math.round(result.score * 1000) / 10
+    const title = el('div', {}, [el('span', { className: 'sci', textContent: result.scientificName })])
+    if (index === 0) title.append(el('span', { className: 'best', textContent: 'Mejor coincidencia' }))
+    const names = result.commonNames.length ? result.commonNames.slice(0, 3).join(', ') : 'Sin nombre común'
+    const bar = el('div', { className: 'bar' }, [el('span')])
+    bar.firstChild.style.width = Math.max(percent, 1) + '%'
+    const meta = el('div', { className: 'meta' }, [
+      document.createTextNode(names + ' · Familia ' + (result.family || '—') + ' · ' + percent + ' %'),
+    ])
+    if (result.gbifId) {
+      meta.append(document.createTextNode(' · '))
+      meta.append(el('a', { href: 'https://www.gbif.org/species/' + encodeURIComponent(result.gbifId), target: '_blank', rel: 'noopener', textContent: 'GBIF' }))
+    }
+    card.append(el('div', { className: 'result' }, [title, bar, meta]))
+  })
+  if (data.remainingIdentificationRequests !== null) {
+    card.append(el('p', { className: 'hint', textContent: 'Identificaciones restantes hoy: ' + data.remainingIdentificationRequests }))
+  }
+  out.replaceChildren(card)
+}
+</script>
+</body>
+</html>
