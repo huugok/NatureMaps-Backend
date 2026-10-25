@@ -58,7 +58,7 @@ PR. Es intencional.
 
 `.github/workflows/ci.yml` corre en cada PR y publica un único check, `ci`:
 
-- Si el diff toca código (`src/`, `package.json`, `package-lock.json`, `tsconfig.json`, `drizzle.config.ts`): `npm ci` y comprobación de tipos (`npx tsc`) **sin emitir**: cualquier error de compilación
+- Si el diff toca código, tests o migraciones (`src/`, `tests/`, `drizzle/`, `package.json`, `package-lock.json`, `tsconfig.json`, `drizzle.config.ts`): `npm ci`, comprobación de tipos (`npx tsc`) **sin emitir** y `npm run test:catalog`: cualquier error
   pone el check en rojo.
 - Si solo hay documentación (`.md`, `docs/`, `AGENTS.md`, `.github/`, `LICENSE`): el check pasa sin
   instalar dependencias ni compilar.
@@ -67,8 +67,8 @@ El check **siempre reporta**, y por eso se puede exigir en la protección de `ma
 de documentación. Si el workflow no llegara a correr, el check quedaría en espera y el merge
 bloqueado; por eso no se usan filtros `paths:` en el disparador.
 
-El check no genera artefactos ni hace bundling: solo verifica que no haya errores de compilación.
-Añadir tests, lint o el build de producción es un paso aparte.
+El check no genera artefactos ni hace bundling. Verifica tipos y ejecuta las pruebas de catálogo
+con PGlite y datos ficticios, sin credenciales ni llamadas externas. No hay linter configurado.
 
 ## Cómo aplicar la protección
 
