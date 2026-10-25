@@ -143,12 +143,40 @@ excluido del control de versiones (`.gitignore`).
 | `npm run db:migrate`    | Aplica las migraciones pendientes a la base de datos.                |
 | `npm run db:push`       | Sincroniza el esquema directamente con la base de datos (sin migraciones, útil en desarrollo). |
 | `npm run db:studio`     | Abre Drizzle Studio para explorar la base de datos.                  |
+| `node docs/check-db.mjs` | Comprueba la conexión a PostgreSQL sin modificar datos.             |
 
 ## Base de datos
 
 La base de datos se aloja en **Neon** (PostgreSQL) y se gestiona mediante **Drizzle ORM**. El
 esquema se define en [src/db/schema.ts](src/db/schema.ts) y la configuración de migraciones en
 [drizzle.config.ts](drizzle.config.ts).
+
+### Comprobar la conexión
+
+Después de ejecutar `npm install` y configurar `DATABASE_URL` en el archivo `.env`, ejecuta
+desde la raíz del proyecto (también funciona en PowerShell):
+
+```bash
+node docs/check-db.mjs
+```
+
+El [script de comprobación](docs/check-db.mjs) carga `.env` y ejecuta
+`SELECT 1 AS ok, current_database() AS database`. No hace falta arrancar el servidor ni haber
+creado las tablas: la consulta no modifica datos.
+
+Una conexión correcta muestra, por ejemplo:
+
+```text
+Conexión correcta:
+[ { ok: 1, database: 'neondb' } ]
+```
+
+El nombre de la base puede ser distinto según `DATABASE_URL`. Si falta la variable o falla la
+conexión, el script muestra un mensaje y termina con código `1`; el tiempo de espera máximo es
+de 20 segundos. Comprueba la cadena copiada desde **Connect** en Neon y el acceso a Internet.
+El script no imprime la cadena de conexión ni la contraseña.
+
+### Migraciones
 
 Flujo de trabajo recomendado al modificar el esquema:
 
