@@ -4,6 +4,23 @@ API Express + TypeScript, PostgreSQL (Neon) y Drizzle ORM para un catálogo bot�
 Guarda plantas con especie, nombres por idioma, coordenadas e identificador; importa inventario
 municipal y conserva el enriquecimiento Wikipedia y la identificación Pl@ntNet.
 
+## Fuentes de datos y estado
+
+| Fuente | Uso implementado |
+|---|---|
+| Valencia Open Data — Arbolado / Arbratge | Importación paginada de plantas: nombres es/ca, coordenadas, distrito/barrio e identificador municipal. |
+| Wikipedia | Búsqueda por nombre científico base, primero es y después en; descripción, extracto y enlace al artículo. El Wikidata ID se toma de esta respuesta, sin consulta independiente a Wikidata. |
+| Wikimedia Commons / archivos de Wikipedia | Foto del artículo y consulta de autor/licencia; se publica solo cuando se obtienen créditos y condiciones reutilizables reconocidas. |
+| Pl@ntNet | Integración existente para identificar fotos; se conserva, pero sus resultados todavía no se guardan como observaciones. |
+
+El mapa consulta nuestro catálogo en PostgreSQL; las APIs externas se usan desde el backend para
+importar, enriquecer o identificar. No hay búsqueda general implementada en todos los proveedores.
+
+Pendiente, fuera de esta PR: GBIF para taxonomía/sinónimos; OpenStreetMap/Overpass para contexto
+geográfico; BDBCV para biodiversidad regional (acceso automatizado y condiciones por confirmar).
+También quedan la persistencia de reconocimientos/observaciones y la sincronización de cambios
+del inventario. Son líneas previstas, no integraciones ya disponibles ni fechas comprometidas.
+
 ## Preparación
 
 ```powershell
