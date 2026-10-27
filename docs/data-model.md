@@ -94,8 +94,16 @@ ejecución y endpoints en el [README](../README.md).
   Incluye nombre científico original; no repite descripciones/licencias por árbol.
 - `GET /trees/:id`: añade nombres disponibles, distrito/barrio, enlace/fecha de origen y `species`.
 - `GET /species`: nombres distintos y enriquecimiento disponible, o campos `NULL` si falta.
-- `POST /species/enrich`: busca especies pendientes; Wikipedia es → en. Fallos de un artículo no
-  borran la planta ni impiden guardar otros artículos. Repetir omite especies completadas.
+- `POST /species/enrich`: sin `lang`, busca especies sin ningún enriquecimiento Wikipedia y usa
+  es → en como fallback. Con `lang=es`/`lang=en`, busca registros pendientes por especie/fuente/idioma
+  y consulta solo esa edición. Puede añadir inglés a una especie con español sin sobrescribirlo.
+  Una edición inexistente cuenta como `notFound`; fallos de un artículo no borran la planta ni
+  impiden guardar otros artículos. Repetir omite las completadas para el modo solicitado.
+
+Los idiomas son filas distintas de `species_enrichments`, no columnas nuevas. La clave única
+`(species_id, source, language)` evita duplicados. No requiere otra migración. La lectura con
+`lang=en` elige la fila inglesa disponible y conserva el fallback de lectura si falta ese idioma.
+El enriquecimiento descarga el artículo original; no es un servicio de traducción automática.
 
 Se conservan los campos del prototipo `description`, `culturalExtract`, `wikipediaUrl`,
 `wikipediaLang`, `wikidataId`, `imageUrl`, `source`, `fetchedAt`. `culturalExtract` es un alias del

@@ -5,6 +5,8 @@ export { toBinomialName } from './taxonomyNames.js'
 
 const USER_AGENT = 'NatureMapsBackend/1.0 (https://github.com/huugok/NatureMaps-Backend)'
 
+export type WikipediaLanguage = 'es' | 'en'
+
 function text(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null
 }
@@ -77,10 +79,12 @@ async function imageMetadata(url: string, language: string, articleUrl: string):
   return result
 }
 
-export async function enrichSpecies(scientificName: string) {
+export async function enrichSpecies(scientificName: string, requestedLanguage?: WikipediaLanguage) {
   const lookupName = toBinomialName(scientificName)
   if (!lookupName) return null
-  for (const language of ['es', 'en']) {
+  // An explicit language fetches only that edition; legacy callers keep es -> en fallback.
+  const languages: WikipediaLanguage[] = requestedLanguage ? [requestedLanguage] : ['es', 'en']
+  for (const language of languages) {
     const summary = await getJson(`https://${language}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(lookupName.replace(/ /g, '_'))}`)
     if (!summary || summary.type === 'disambiguation') continue
     const extract = text(summary.extract)

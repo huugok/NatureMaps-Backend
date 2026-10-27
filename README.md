@@ -9,7 +9,7 @@ municipal y conserva el enriquecimiento Wikipedia y la identificación Pl@ntNet.
 | Fuente | Uso implementado |
 |---|---|
 | Valencia Open Data — Arbolado / Arbratge | Importación paginada de plantas: nombres es/ca, coordenadas, distrito/barrio e identificador municipal. |
-| Wikipedia | Búsqueda por nombre científico base, primero es y después en; descripción, extracto y enlace al artículo. El Wikidata ID se toma de esta respuesta, sin consulta independiente a Wikidata. |
+| Wikipedia | Búsqueda por nombre científico base: idioma explícito es/en o fallback es → en; descripción, extracto y enlace al artículo. El Wikidata ID se toma de esta respuesta, sin consulta independiente a Wikidata. |
 | Wikimedia Commons / archivos de Wikipedia | Foto del artículo y consulta de autor/licencia; se publica solo cuando se obtienen créditos y condiciones reutilizables reconocidas. |
 | Pl@ntNet | Integración existente para identificar fotos; se conserva, pero sus resultados todavía no se guardan como observaciones. |
 
@@ -88,7 +88,7 @@ Invoke-RestMethod "http://localhost:3000/species?lang=es"
 | `POST /trees/import?limit=20&offset=0` | Importa una página (1–200 registros), sin duplicar plantas existentes. |
 | `GET /trees?limit=20&offset=0&lang=es` | Lista ligera para el mapa: nombres, especie, coordenadas e IDs. |
 | `GET /trees/:id?lang=ca` | Ficha con nombres disponibles, procedencia y especie enriquecida. |
-| `POST /species/enrich?limit=20` | Wikipedia es → en para especies pendientes; admite `afterId`. |
+| `POST /species/enrich?limit=20` | Wikipedia para especies pendientes; admite `lang=es`/`lang=en` y `afterId`. Sin `lang`, conserva el fallback es → en. |
 | `GET /species?lang=es` | Nombres distintos por especie y enriquecimiento disponible. |
 | `POST /plants/identify` | Integración Pl@ntNet existente; ver su guía. |
 
@@ -99,7 +99,23 @@ Una página con errores puede guardar otras filas y devolver `status: failed` au
 no sincroniza cambios municipales. El ID interno es independiente del identificador municipal.
 
 Enriquecimiento: devuelve `totalSpecies`, `alreadyStored`, `enriched`, `notFound`, `failed`,
-`nextAfterId`. Repetir omite especies completadas y reintenta pendientes/fallidas.
+`nextAfterId`. Sin `lang`, omite especies con cualquier enriquecimiento Wikipedia y usa es → en
+como fallback. Con `lang=es` o `lang=en`, busca solo esa edición y omite únicamente especies que
+ya tienen ese idioma. `alreadyStored` cuenta las completadas para ese modo; `language` indica
+el idioma solicitado cuando es explícito. Una edición inexistente cuenta como `notFound`, sin
+guardar otro idioma en su lugar. Repetir no duplica ni sobrescribe los textos existentes.
+
+Para añadir inglés aunque ya exista español:
+
+```bash
+curl -X POST "http://localhost:3000/species/enrich?lang=en&limit=20"
+```
+
+Si `nextAfterId` no es `null`, continúa con `afterId` y el mismo `lang`. Para leer inglés, usa
+`GET /species?lang=en` o `GET /trees/:id?lang=en`; si falta, la lectura conserva su fallback de
+idioma. Se descargan artículos originales de Wikipedia: no se traducen automáticamente textos.
+No se necesita migración; cada idioma ocupa una fila de `species_enrichments`.
+
 Los campos anteriores `description`, `culturalExtract`, `wikipediaUrl`, `wikipediaLang`,
 `wikidataId`, `imageUrl` siguen disponibles. `culturalExtract` es un alias del extracto enciclopédico.
 `enrichment` contiene texto y fuente; `image`, foto y créditos. Sin créditos reconocidos, `imageUrl`

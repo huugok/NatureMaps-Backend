@@ -17,7 +17,12 @@ function errorResponse(res: Response, error: unknown) {
 
 export async function enrichSpeciesFromTrees(req: Request, res: Response) {
   try {
-    res.json(await enrichCatalogSpecies(number(req.query.limit, 20, 1, 200), number(req.query.afterId, 0, 0, 2_147_483_647)))
+    const language = req.query.lang
+    if (language !== undefined && language !== 'es' && language !== 'en') {
+      throw new CatalogError(400, 'lang debe ser es o en')
+    }
+    res.json(await enrichCatalogSpecies(number(req.query.limit, 20, 1, 200),
+      number(req.query.afterId, 0, 0, 2_147_483_647), language))
   } catch (error) { errorResponse(res, error) }
 }
 

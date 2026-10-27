@@ -138,5 +138,6 @@ done
 - Etiquetas de triage: **creadas** (`needs-triage`, `needs-info`, `ready-for-agent`,
   `ready-for-human`); `wontfix`, `bug` y `enhancement` ya existían.
 - PRs abiertas: frontend `#1` (`F16_Barra_Inferior` → `main`), sin mergear.
-- Ramas de trabajo existentes: `explore_open_data` (backend), `F16_Barra_Inferior` (frontend),
-  creadas antes de esta política y sin el prefijo `feat/`.
+- El prototipo backend `explore_open_data` está archivado en el tag remoto
+  `archive/explore-open-data`; la rama fue eliminada. Ver [AGENTS.md](../../AGENTS.md) para
+  consultar el archivo. La rama frontend `F16_Barra_Inferior` nació antes de la política de prefijos.

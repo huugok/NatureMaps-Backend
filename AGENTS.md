@@ -3,7 +3,7 @@
 Guía para agentes (y personas) que trabajen en este repositorio. Mantenerla actualizada cuando
 cambien los comandos, la estructura o las convenciones.
 
-> Última verificación: 2026-10-26 · `origin/main` @ `bd4ed52`.
+> Última verificación: 2026-10-27 · `origin/main` @ `bd4ed52`.
 > `feat/plant-data-model`: una migración inicial limpia para el catálogo simplificado.
 
 ## Qué es este proyecto
@@ -19,7 +19,8 @@ pretende ser una base botánica construida desde cero.
 - Frontend (repo hermano, misma carpeta padre): `github.com/huugok/NatureMaps-Frontend`
 - Documentación de producto compartida: `../docs/` (PDF/ODT/XLSX: requisitos, DAFO,
   estudio de competidores, proyección de ingresos)
-- Documentación de integración: `origin/explore_open_data:docs/`
+- Documentación histórica del prototipo: [docs del archivo](https://github.com/huugok/NatureMaps-Backend/tree/032d4f8f722a5a246e79a9e967b805cdad87f6f7/docs),
+  conservadas en el tag remoto `archive/explore-open-data` (`032d4f8`, incluye `e0b8dfa`)
   (`Nature_MAPS_Requisitos.pdf`, `Lluvia_de_ideas.pdf`, `Flower MAP — Data Sources.md`)
 - Convenciones para agentes: `docs/agents/` (`issue-tracker.md`, `triage-labels.md`,
   `domain.md`, `git-workflow.md`)
@@ -29,23 +30,26 @@ No hay monorepo ni workspace: cada repo se instala y se ejecuta por separado con
 ## Estado de ramas (leer antes de empezar)
 
 `origin/main` ya incluye identificación Pl@ntNet (`/plants/identify`, página `/probar`), además
-del scaffold. Los prototipos de inventario viven en `origin/explore_open_data` (`e0b8dfa`):
+del scaffold. La antigua rama `explore_open_data` fue retirada; su prototipo se conserva en el
+tag remoto `archive/explore-open-data` (`032d4f8`, posterior a `e0b8dfa`):
 
 - ingesta de arbolado de Valencia Open Data + tabla `trees`
 - enriquecimiento de especies vía Wikipedia/Wikidata + tabla `species`
 - endpoints `/trees` y `/species`
 - `CLAUDE.md`, `README.md` y `docs/` propios de esa rama
 
-Antes de asumir que una carpeta está vacía, comprobar la rama:
-`git branch -r` y `git log --oneline main..origin/<rama>`.
+Para consultar el archivo desde otro clon: `git fetch origin tag archive/explore-open-data`,
+y después `git show archive/explore-open-data:<ruta>`.
 Las instrucciones actuales para agentes se mantienen solo en este archivo; no copiar las del prototipo.
 
 En `feat/plant-data-model`, `docs/data-model.md` describe cuatro tablas de catálogo, con `users`
-conservada del scaffold. Solo queda `0000_plant_catalog`; el historial experimental se retiró con
-autorización porque no lo usa nadie más. `/trees` y `/species` usan el modelo simplificado;
+conservada del scaffold. Solo queda `0000_plant_catalog`; el reinicio experimental se describe
+en «Decisión de reinicio de la base de prueba», más abajo. `/trees` y `/species` usan el modelo simplificado;
 Wikipedia, Wikidata e imágenes están adaptados.
-Ver `README.md` para comandos y `docs/data-model.md` para el modelo y flujo de importación.
-Los documentos históricos permanecen en `origin/explore_open_data:docs/`, sin copias locales.
+Documentación vigente: [README.md](README.md) para comandos y
+[docs/data-model.md](docs/data-model.md) para el modelo y flujo de importación.
+El archivo conserva el código y los documentos originales; no es una copia de seguridad de la
+base ni de las migraciones intermedias descartadas. La documentación vigente está en este checkout.
 
 ## Stack
 
@@ -121,12 +125,16 @@ No recrear logs, payloads completos ni infraestructura genérica para proveedore
 `plant_locations` guarda fuente, ID/enlace externos y fecha; los nombres heredan esa procedencia.
 `(source, external_id)` evita plantas duplicadas; `(source, scientific_name)` agrupa etiquetas dentro
 de una fuente sin reconciliar taxones entre proveedores. No usar `toBinomialName()` como identidad global.
+`POST /species/enrich?lang=es|en` carga solo la edición solicitada y detecta pendientes por idioma;
+sin `lang`, conserva el modo anterior es → en para especies sin ningún enriquecimiento. No sobrescribir
+otros idiomas ni guardar fallback con una etiqueta de idioma incorrecta. La lectura elige el idioma
+disponible según `lang` y sus fallbacks; no es traducción automática.
 Wikipedia guarda texto, Wikidata, enlace y fecha por especie/idioma. Créditos/licencias son columnas
 simples del enriquecimiento; las condiciones municipales comunes permanecen en el adaptador.
 Solo se guardan imágenes con créditos y condiciones reconocidas; no hay cola de imágenes pendientes.
 Pl@ntNet no persiste observaciones: no añadir tablas sin implementar un flujo que las utilice.
 
-Tablas del prototipo en `explore_open_data` (no confundir con la migración inicial nueva):
+Tablas del prototipo archivado (no confundir con la migración inicial nueva):
 
 - `trees` — árboles importados de Valencia Open Data. `external_id` (= `idarbol`) único; nombres
   científico/común (es/ca), distrito, barrio, lat/lon; `source` y `imported_at`.
@@ -137,12 +145,33 @@ Tablas del prototipo en `explore_open_data` (no confundir con la migración inic
 
 **Procedencia mínima**: guardar referencias de origen de plantas y enriquecimientos, heredando
 lo común sin duplicar tablas/metadatos. Las inserciones deben ser idempotentes sobre su clave natural.
-El usuario autorizó retirar todas las migraciones experimentales y reiniciar su base de prueba,
-incluidos usuarios e historial. Solo queda `0000_plant_catalog` y su snapshot/journal nuevos.
-El reset ya se completó y sus herramientas temporales se retiraron. Las migraciones futuras deben
-ser incrementales: esta autorización no permite otros resets posteriores.
 
-## Endpoints (rama `explore_open_data`)
+### Decisión de reinicio de la base de prueba
+
+Durante la preparación de esta PR, su autor decidió sustituir las migraciones experimentales por
+una inicial limpia, tras indicar en la sesión de trabajo que nadie más las utilizaba y que los
+pocos datos de prueba podían recuperarse mediante importación. Codex propuso el procedimiento y,
+tras la indicación expresa del autor de borrar y recrear, ejecutó el reset contra la base de
+`DATABASE_URL`, seguido de `db:migrate`. Fue una decisión del autor, no una aprobación del equipo.
+
+La base no tenía datos de aplicación al inicio de la tarea; antes del reset ya se había cargado
+una muestra de prueba de 13 plantas/5 especies y su Wikipedia. Se eliminaron las tablas de
+aplicación existentes y `drizzle.__drizzle_migrations`, incluida la tabla de aplicación `users`.
+Los DROP estaban limitados a nombres conocidos: `data_sources`, `import_runs`, `source_records`,
+`species_names`, `species_descriptions`, `species_media`, `plant_locations`, `species`, `users`,
+y, si existían, `trees`, `plant_names`, `species_enrichments`. No se eliminaron la base Neon,
+los roles PostgreSQL ni las cuentas de Neon. No se registró un recuento previo de filas de `users`.
+
+Se descartaron los SQL/snapshots locales intermedios, que no se habían publicado; el tag del
+prototipo no conserva esos archivos ni los datos borrados. Se generó la nueva `0000_plant_catalog`
+y su snapshot/journal. Tras aplicarla se comprobaron cinco tablas vacías y una entrada de migración;
+posteriormente se volvió a importar/enriquecer la muestra. El motivo fue simplificar el modelo
+de una base de desarrollo desechable antes de compartir su primera migración.
+
+Las herramientas temporales de reset se retiraron. Los cambios futuros requieren migraciones
+incrementales; esta decisión puntual no autoriza nuevos resets.
+
+## Endpoints del prototipo archivado
 
 - `GET /health` → `{ status: 'ok' }`
 - `POST /trees/import?limit=200` — descarga N árboles del endpoint ArcGIS de Valencia y los inserta
@@ -209,8 +238,8 @@ configuración de protección y el versionado están en `docs/agents/git-workflo
 - Este checkout es el principal del repo: para trabajo en paralelo, usar worktrees en vez de
   ramas sin commitear en el árbol principal.
 - No hacer `git push` ni abrir PRs sin que lo pida el usuario.
-- Rama de trabajo actual sin prefijo (`explore_open_data`): nació antes de esta política; no
-  renombrar sin cerrar su PR.
+- El prototipo anterior se consulta mediante `archive/explore-open-data`; no restaurar una
+  dependencia de la rama eliminada `explore_open_data`.
 
 ## Agent skills
 

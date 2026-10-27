@@ -48,6 +48,8 @@ test('catalog import and HTTP API with isolated PostgreSQL', async (t) => {
   let databaseCalls = 0
   let wikipediaCalls = 0
   let failMorus = true
+  let missingEnglishMorus = false
+  const wikipediaSummaries = []
   neonConfig.fetchFunction = async (_url, init) => {
     databaseCalls++
     const body = JSON.parse(init.body)
@@ -86,14 +88,17 @@ test('catalog import and HTTP API with isolated PostgreSQL', async (t) => {
       }
       if (url.pathname.endsWith('/bare')) return Response.json({ license: { title: 'CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' } })
       const title = decodeURIComponent(url.pathname.split('/').at(-1))
+      wikipediaSummaries.push({ language: url.hostname.split('.')[0], title })
       if (title === 'Morus_alba' && failMorus) return Response.json({}, { status: 503 })
+      if (title === 'Morus_alba' && missingEnglishMorus && url.hostname === 'en.wikipedia.org') return Response.json({}, { status: 404 })
       if (title === 'Absentus_fictus') return url.hostname === 'es.wikipedia.org'
         ? Response.json({ type: 'disambiguation' }) : Response.json({}, { status: 404 })
       if (title === 'Phoenix_dactylifera' && url.hostname === 'es.wikipedia.org') return Response.json({}, { status: 404 })
       const ids = { Citrus_aurantium: 41, Morus_alba: 42, Phoenix_dactylifera: 43 }
       const filename = title === 'Citrus_aurantium' ? 'Citrus.jpg' : 'Phoenix.jpg'
       return Response.json({ type: 'standard', title: title.replaceAll('_', ' '), pageid: ids[title],
-        wikibase_item: `Q${ids[title]}`, description: `Summary ${title}`, extract: `Extract ${title}`,
+        wikibase_item: `Q${ids[title]}`, description: `Summary ${title}`,
+        extract: url.hostname === 'en.wikipedia.org' ? `English extract ${title}` : `Extract ${title}`,
         thumbnail: title === 'Morus_alba' ? undefined : { source: `https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ab/${filename}/320px-${filename}` } })
     }
     assert.equal(url.hostname, 'geoportal.valencia.es', 'Unexpected external network call')
@@ -126,7 +131,8 @@ test('catalog import and HTTP API with isolated PostgreSQL', async (t) => {
 
     await t.test('reject invalid parameters before contacting database or upstream', async () => {
       const before = { databaseCalls, upstreamCalls }
-      for (const path of ['/trees/import?limit=0', '/trees/import?limit=201', '/trees/import?offset=-1', '/species/enrich?limit=201']) {
+      for (const path of ['/trees/import?limit=0', '/trees/import?limit=201', '/trees/import?offset=-1',
+        '/species/enrich?limit=201', '/species/enrich?lang=fr', '/species/enrich?lang=', '/species/enrich?lang=en&lang=es']) {
         assert.equal((await request(path, 'POST')).status, 400)
       }
       for (const path of ['/trees?lang=!!!', '/trees?limit=-1', '/trees/abc', '/trees/0', '/species?lang=!!!']) {
@@ -297,6 +303,59 @@ test('catalog import and HTTP API with isolated PostgreSQL', async (t) => {
       const following = await request(`/species/enrich?afterId=${response.body.nextAfterId}`, 'POST')
       assert.equal(following.body.nextAfterId, null)
       assert.equal(await count('species'), 4)
+    })
+
+    await t.test('explicit language adds missing editions, preserves existing text and paginates independently', async () => {
+      const spanishBefore = (await pg.query("select * from species_enrichments where language = 'es' order by id")).rows
+      const requestsBefore = wikipediaSummaries.length
+      const first = (await request('/species/enrich?lang=en&limit=1', 'POST')).body
+      assert.equal(first.language, 'en')
+      assert.equal(first.totalSpecies, 4)
+      assert.equal(first.alreadyStored, 1) // Phoenix was stored in English by the legacy fallback.
+      assert.equal(first.enriched, 1)
+      assert.ok(first.nextAfterId > 0)
+      const english = (await request('/species?lang=en')).body.species
+      const citrus = english.find((row) => row.scientificName === 'Citrus aurantium')
+      assert.equal(citrus.wikipediaLang, 'en')
+      assert.match(citrus.wikipediaUrl, /^https:\/\/en\.wikipedia\.org\//)
+      assert.equal(citrus.enrichment.content, 'English extract Citrus_aurantium')
+      const tree = (await request('/trees?limit=1')).body.trees[0]
+      assert.equal((await request(`/trees/${tree.id}?lang=en`)).body.species.wikipediaLang, 'en')
+
+      // A missing English article must not be replaced by another Spanish row.
+      missingEnglishMorus = true
+      try {
+        const next = (await request(`/species/enrich?lang=en&afterId=${first.nextAfterId}`, 'POST')).body
+        assert.equal(next.alreadyStored, 2)
+        assert.equal(next.enriched, 0)
+        assert.equal(next.notFound, 2)
+        assert.equal(next.nextAfterId, null)
+        assert.deepEqual(next.failed, [])
+        const morus = english.find((row) => row.scientificName === 'Morus alba')
+        assert.equal((await pg.query("select id from species_enrichments where species_id = $1 and language = 'en'", [morus.id])).rows.length, 0)
+      } finally { missingEnglishMorus = false }
+
+      const retry = (await request('/species/enrich?lang=en', 'POST')).body
+      assert.equal(retry.enriched, 1)
+      assert.equal(retry.notFound, 1)
+      const repeated = (await request('/species/enrich?lang=en', 'POST')).body
+      assert.equal(repeated.alreadyStored, 3)
+      assert.equal(repeated.enriched, 0)
+      assert.equal(repeated.notFound, 1)
+      assert.equal(await count('species_enrichments'), 5)
+      assert.deepEqual((await pg.query("select * from species_enrichments where language = 'es' order by id")).rows, spanishBefore)
+      assert.ok(wikipediaSummaries.slice(requestsBefore).every((query) => query.language === 'en'))
+
+      const spanish = (await request('/species?lang=es')).body.species.find((row) => row.id === citrus.id)
+      assert.equal(spanish.enrichment.content, 'Extract Citrus_aurantium')
+      // Explicit Spanish cannot fall back to English either.
+      const spanishRequestsBefore = wikipediaSummaries.length
+      const spanishRun = (await request('/species/enrich?lang=es', 'POST')).body
+      assert.equal(spanishRun.alreadyStored, 2)
+      assert.equal(spanishRun.enriched, 0)
+      assert.equal(spanishRun.notFound, 2)
+      assert.ok(wikipediaSummaries.slice(spanishRequestsBefore).every((query) => query.language === 'es'))
+      assert.equal(await count('species_enrichments'), 5)
     })
   } finally {
     if (server) await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))
