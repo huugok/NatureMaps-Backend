@@ -91,6 +91,16 @@ un upstream ficticio; no demuestra disponibilidad de Neon ni del ArcGIS público
 
 Nunca leer, imprimir ni commitear valores reales de `.env`.
 
+### Rotación de credenciales
+
+- **2026-10-28 — `DATABASE_URL` rotada.** La cadena de conexión de Neon quedó
+  expuesta en una sesión de trabajo (chat del agente). Se restableció la
+  contraseña en Neon y la cadena válida vive únicamente en `.env`. Cualquier
+  copia anterior de esa cadena —incluida la historia del chat— es **inválida**:
+  no usarla, no compartirla y rotar de nuevo si reaparece en algún sitio.
+- **Pendiente: `PLANTNET_API_KEY`.** También quedó expuesta en esa misma
+  sesión; rotarla en my.plantnet.org y actualizar `.env` con la nueva.
+
 ## Estructura y capas
 
 ```
