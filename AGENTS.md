@@ -94,13 +94,16 @@ Nunca leer, imprimir ni commitear valores reales de `.env`.
 ### Rotación de credenciales
 
 - **2026-10-28 — `DATABASE_URL` rotada.** La cadena de conexión de Neon quedó
-  expuesta en una sesión de trabajo (chat del agente). Se restableció la
-  contraseña en Neon y la cadena válida vive únicamente en `.env`. Cualquier
-  copia anterior de esa cadena —incluida la historia del chat— es **inválida**:
-  no usarla, no compartirla y rotar de nuevo si reaparece en algún sitio.
-- **2026-10-28 — `PLANTNET_API_KEY` rotada** (también quedó expuesta en esa
-  misma sesión). La clave válida vive únicamente en `.env`; cualquier copia
-  anterior es inválida.
+  expuesta en una sesión de trabajo (chat del agente) y se restableció la
+  contraseña en Neon. **Si tenías la cadena anterior configurada en tu `.env`
+  local, ya no funciona**: pide la cadena nueva y actualiza tu `.env`. La
+  cadena válida vive únicamente en `.env`; cualquier copia anterior (historial
+  de chat incluido) es inválida: no usarla, no compartirla y rotar de nuevo si
+  reaparece en algún sitio.
+- **2026-10-28 — `PLANTNET_API_KEY` rotada** (quedó expuesta en esa misma
+  sesión). **Si tenías la clave anterior configurada, ya no funciona**: pide
+  la nueva y actualiza tu `.env`. La clave válida vive únicamente en `.env`;
+  cualquier copia anterior es inválida.
 
 ## Estructura y capas
 
