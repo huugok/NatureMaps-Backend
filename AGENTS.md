@@ -3,8 +3,8 @@
 Guía para agentes (y personas) que trabajen en este repositorio. Mantenerla actualizada cuando
 cambien los comandos, la estructura o las convenciones.
 
-> Última verificación: 2026-10-20 · `main` @ `4612131` · `origin/explore_open_data` @ `e0b8dfa`
-> (sin commits nuevos en `origin`).
+> Última verificación: 2026-10-27 · `origin/main` @ `bd4ed52`.
+> `feat/plant-data-model`: una migración inicial limpia para el catálogo simplificado.
 
 ## Qué es este proyecto
 
@@ -19,7 +19,8 @@ pretende ser una base botánica construida desde cero.
 - Frontend (repo hermano, misma carpeta padre): `github.com/huugok/NatureMaps-Frontend`
 - Documentación de producto compartida: `../docs/` (PDF/ODT/XLSX: requisitos, DAFO,
   estudio de competidores, proyección de ingresos)
-- Documentación de integración: `origin/explore_open_data:docs/`
+- Documentación histórica del prototipo: [docs del archivo](https://github.com/huugok/NatureMaps-Backend/tree/032d4f8f722a5a246e79a9e967b805cdad87f6f7/docs),
+  conservadas en el tag remoto `archive/explore-open-data` (`032d4f8`, incluye `e0b8dfa`)
   (`Nature_MAPS_Requisitos.pdf`, `Lluvia_de_ideas.pdf`, `Flower MAP — Data Sources.md`)
 - Convenciones para agentes: `docs/agents/` (`issue-tracker.md`, `triage-labels.md`,
   `domain.md`, `git-workflow.md`)
@@ -28,18 +29,27 @@ No hay monorepo ni workspace: cada repo se instala y se ejecuta por separado con
 
 ## Estado de ramas (leer antes de empezar)
 
-`main` contiene **solo el scaffold** (commit `4612131`: Express + `/health` + conexión Drizzle).
-La implementación real vive en `origin/explore_open_data` (5 commits sin mergear, HEAD `e0b8dfa`):
+`origin/main` ya incluye identificación Pl@ntNet (`/plants/identify`, página `/probar`), además
+del scaffold. La antigua rama `explore_open_data` fue retirada; su prototipo se conserva en el
+tag remoto `archive/explore-open-data` (`032d4f8`, posterior a `e0b8dfa`):
 
 - ingesta de arbolado de Valencia Open Data + tabla `trees`
 - enriquecimiento de especies vía Wikipedia/Wikidata + tabla `species`
 - endpoints `/trees` y `/species`
 - `CLAUDE.md`, `README.md` y `docs/` propios de esa rama
 
-Antes de asumir que una carpeta está vacía, comprobar la rama:
-`git branch -r` y `git log --oneline main..origin/<rama>`.
-Ese `CLAUDE.md` de la rama describe la misma arquitectura en inglés; al mergear, evitar que quede
-duplicado con este archivo (dejar una sola fuente de verdad y un puntero desde el otro).
+Para consultar el archivo desde otro clon: `git fetch origin tag archive/explore-open-data`,
+y después `git show archive/explore-open-data:<ruta>`.
+Las instrucciones actuales para agentes se mantienen solo en este archivo; no copiar las del prototipo.
+
+En `feat/plant-data-model`, `docs/data-model.md` describe cuatro tablas de catálogo, con `users`
+conservada del scaffold. Solo queda `0000_plant_catalog`; el reinicio experimental se describe
+en «Decisión de reinicio de la base de prueba», más abajo. `/trees` y `/species` usan el modelo simplificado;
+Wikipedia, Wikidata e imágenes están adaptados.
+Documentación vigente: [README.md](README.md) para comandos y
+[docs/data-model.md](docs/data-model.md) para el modelo y flujo de importación.
+El archivo conserva el código y los documentos originales; no es una copia de seguridad de la
+base ni de las migraciones intermedias descartadas. La documentación vigente está en este checkout.
 
 ## Stack
 
@@ -55,17 +65,21 @@ duplicado con este archivo (dejar una sola fuente de verdad y un puntero desde e
 npm install
 npm run dev            # tsx watch src/index.ts
 npm run build          # tsc -> dist/
+npm run test:catalog   # Node Test Runner + tsx + PGlite; sin .env ni servicios externos
 npm start              # node dist/index.js
 
 npm run db:generate    # migraciones SQL desde src/db/schema.ts -> drizzle/
 npm run db:migrate     # aplica migraciones
 npm run db:push        # empuja el schema sin migraciones (solo prototipado)
 npm run db:studio      # Drizzle Studio
+node docs/check-db.mjs # SELECT de conexión; sin cambios en datos
 ```
 
-No hay linter ni suite de tests configurados. No inventar `npm test` ni afirmar que algo está
-"validado": la verificación real hoy es `npx tsc --noEmit` (o `npm run build`) y probar los
-endpoints con `curl` contra el servidor en marcha.
+En PowerShell, si la política bloquea `npm.ps1`, usar `npm.cmd` con los mismos argumentos.
+
+No hay linter ni comando `npm test`. Para cambios del catálogo ejecutar `npm run build` y
+`npm run test:catalog`. La suite ejecuta la migración y el SQL real sobre PGlite, y prueba HTTP con
+un upstream ficticio; no demuestra disponibilidad de Neon ni del ArcGIS público.
 
 ## Variables de entorno
 
@@ -79,7 +93,8 @@ Nunca leer, imprimir ni commitear valores reales de `.env`.
 ## Estructura y capas
 
 ```
-src/index.ts        App Express: CORS, JSON, GET /health, monta routers
+src/index.ts        Carga .env e inicia el servidor HTTP
+src/app.ts          App Express: CORS, JSON, GET /health, monta routers
 src/db/index.ts     Cliente Drizzle (neon-http) a partir de DATABASE_URL
 src/db/schema.ts    Tablas Drizzle
 src/routes/         Routers (solo cablean rutas -> controladores)
@@ -92,12 +107,34 @@ docs/agents/        Convenciones para agentes (issue tracker, domain docs)
 Regla de capas a seguir en features nuevas: **routes → controllers → services**, y middlewares para
 lo transversal. No poner lógica ni acceso a datos directamente en los handlers de rutas.
 
-En `main` las carpetas `controllers/`, `routes/`, `services/` y `middlewares/` solo tienen
-`.gitkeep`; el ejemplo completo está en `origin/explore_open_data`.
+En `main` ya hay router/controlador/servicio para Pl@ntNet. La ingesta normalizada está en
+`src/services/inventoryImport.ts`; `valenciaOpenData.ts` obtiene/valida/normaliza y no accede a BD.
+`treeCatalog.ts` devuelve una lista ligera; la ficha incluye procedencia y especie enriquecida.
+Las posiciones municipales `Falta` se excluyen sin almacenarlas. `stored` cuenta plantas nuevas,
+`excluded` posiciones ausentes y `skipped` plantas ya guardadas. No hay `runId` ni `located`.
+Los nombres se guardan por ejemplar e idioma para no mezclar `macho`/`hembra`.
+`neon-http` no admite callbacks interactivos `db.transaction`: usar batches transaccionales para
+las escrituras relacionadas. El importador usa un bloqueo transaccional por conjunto de datos.
 
 ## Modelo de datos y procedencia
 
-Tablas implementadas en la rama de feature:
+Catálogo actual: `species`, `plant_locations`, `plant_names`, `species_enrichments`.
+Consultar `docs/data-model.md` antes de cambiar importación o lectura. `users` se conserva.
+El usuario redujo expresamente el alcance a plantas, Wikipedia y la integración Pl@ntNet existente.
+No recrear logs, payloads completos ni infraestructura genérica para proveedores futuros.
+`plant_locations` guarda fuente, ID/enlace externos y fecha; los nombres heredan esa procedencia.
+`(source, external_id)` evita plantas duplicadas; `(source, scientific_name)` agrupa etiquetas dentro
+de una fuente sin reconciliar taxones entre proveedores. No usar `toBinomialName()` como identidad global.
+`POST /species/enrich?lang=es|en` carga solo la edición solicitada y detecta pendientes por idioma;
+sin `lang`, conserva el modo anterior es → en para especies sin ningún enriquecimiento. No sobrescribir
+otros idiomas ni guardar fallback con una etiqueta de idioma incorrecta. La lectura elige el idioma
+disponible según `lang` y sus fallbacks; no es traducción automática.
+Wikipedia guarda texto, Wikidata, enlace y fecha por especie/idioma. Créditos/licencias son columnas
+simples del enriquecimiento; las condiciones municipales comunes permanecen en el adaptador.
+Solo se guardan imágenes con créditos y condiciones reconocidas; no hay cola de imágenes pendientes.
+Pl@ntNet no persiste observaciones: no añadir tablas sin implementar un flujo que las utilice.
+
+Tablas del prototipo archivado (no confundir con la migración inicial nueva):
 
 - `trees` — árboles importados de Valencia Open Data. `external_id` (= `idarbol`) único; nombres
   científico/común (es/ca), distrito, barrio, lat/lon; `source` y `imported_at`.
@@ -106,11 +143,35 @@ Tablas implementadas en la rama de feature:
   `image_url`, `source`, `fetched_at`.
 - `users` — tabla de ejemplo del scaffold, sin uso todavía.
 
-**La procedencia es requisito de diseño**: cada tabla o job que importe datos externos debe
-guardar fuente, id del registro original, licencia/atribución y fecha de importación. Las
-inserciones deben ser idempotentes (`onConflictDoNothing` sobre la clave natural).
+**Procedencia mínima**: guardar referencias de origen de plantas y enriquecimientos, heredando
+lo común sin duplicar tablas/metadatos. Las inserciones deben ser idempotentes sobre su clave natural.
 
-## Endpoints (rama `explore_open_data`)
+### Decisión de reinicio de la base de prueba
+
+Durante la preparación de esta PR, su autor decidió sustituir las migraciones experimentales por
+una inicial limpia, tras indicar en la sesión de trabajo que nadie más las utilizaba y que los
+pocos datos de prueba podían recuperarse mediante importación. Codex propuso el procedimiento y,
+tras la indicación expresa del autor de borrar y recrear, ejecutó el reset contra la base de
+`DATABASE_URL`, seguido de `db:migrate`. Fue una decisión del autor, no una aprobación del equipo.
+
+La base no tenía datos de aplicación al inicio de la tarea; antes del reset ya se había cargado
+una muestra de prueba de 13 plantas/5 especies y su Wikipedia. Se eliminaron las tablas de
+aplicación existentes y `drizzle.__drizzle_migrations`, incluida la tabla de aplicación `users`.
+Los DROP estaban limitados a nombres conocidos: `data_sources`, `import_runs`, `source_records`,
+`species_names`, `species_descriptions`, `species_media`, `plant_locations`, `species`, `users`,
+y, si existían, `trees`, `plant_names`, `species_enrichments`. No se eliminaron la base Neon,
+los roles PostgreSQL ni las cuentas de Neon. No se registró un recuento previo de filas de `users`.
+
+Se descartaron los SQL/snapshots locales intermedios, que no se habían publicado; el tag del
+prototipo no conserva esos archivos ni los datos borrados. Se generó la nueva `0000_plant_catalog`
+y su snapshot/journal. Tras aplicarla se comprobaron cinco tablas vacías y una entrada de migración;
+posteriormente se volvió a importar/enriquecer la muestra. El motivo fue simplificar el modelo
+de una base de desarrollo desechable antes de compartir su primera migración.
+
+Las herramientas temporales de reset se retiraron. Los cambios futuros requieren migraciones
+incrementales; esta decisión puntual no autoriza nuevos resets.
+
+## Endpoints del prototipo archivado
 
 - `GET /health` → `{ status: 'ok' }`
 - `POST /trees/import?limit=200` — descarga N árboles del endpoint ArcGIS de Valencia y los inserta
@@ -133,9 +194,10 @@ Los `GET` no requieren parámetros para poder abrirlos en el navegador
 - **Wikidata**: el id llega en el propio summary (`wikibase_item`); no hace falta llamada aparte.
 - Previstas: GBIF, Overpass/OSM, BDBCV, IDEV, AEMET.
 
-Normalización importante: los nombres de Valencia incluyen cultivares/sexo
+Normalización del prototipo: los nombres de Valencia incluyen cultivares/sexo
 (`"Morus alba 'Fruitless'"`, `"Phoenix dactylifera hembra"`); usar `toBinomialName()` antes de
-buscar en Wikipedia y como clave de `species`.
+buscar en Wikipedia. En el catálogo nuevo se conserva el original y se reconocen solo binomios
+simples y calificadores conocidos (cultivar entre comillas, hembra/macho), sin identidad global.
 
 ## Convenciones
 
@@ -176,8 +238,8 @@ configuración de protección y el versionado están en `docs/agents/git-workflo
 - Este checkout es el principal del repo: para trabajo en paralelo, usar worktrees en vez de
   ramas sin commitear en el árbol principal.
 - No hacer `git push` ni abrir PRs sin que lo pida el usuario.
-- Rama de trabajo actual sin prefijo (`explore_open_data`): nació antes de esta política; no
-  renombrar sin cerrar su PR.
+- El prototipo anterior se consulta mediante `archive/explore-open-data`; no restaurar una
+  dependencia de la rama eliminada `explore_open_data`.
 
 ## Agent skills
 
