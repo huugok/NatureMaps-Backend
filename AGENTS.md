@@ -98,8 +98,9 @@ Nunca leer, imprimir ni commitear valores reales de `.env`.
   contraseña en Neon y la cadena válida vive únicamente en `.env`. Cualquier
   copia anterior de esa cadena —incluida la historia del chat— es **inválida**:
   no usarla, no compartirla y rotar de nuevo si reaparece en algún sitio.
-- **Pendiente: `PLANTNET_API_KEY`.** También quedó expuesta en esa misma
-  sesión; rotarla en my.plantnet.org y actualizar `.env` con la nueva.
+- **2026-10-28 — `PLANTNET_API_KEY` rotada** (también quedó expuesta en esa
+  misma sesión). La clave válida vive únicamente en `.env`; cualquier copia
+  anterior es inválida.
 
 ## Estructura y capas
 
