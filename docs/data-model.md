@@ -6,7 +6,7 @@ Guardar especie, nombre común por idioma, coordenadas e identificador de cada p
 el inventario para las pantallas. Conservar el enriquecimiento Wikipedia del prototipo y la
 integración Pl@ntNet de `main`. Las fuentes futuras son contexto, no funcionalidades implementadas.
 
-## Esquema actual: cuatro tablas de catálogo
+## Esquema actual: cinco tablas de catálogo
 
 | Tabla | Datos y responsabilidad |
 |---|---|
@@ -14,8 +14,9 @@ integración Pl@ntNet de `main`. Las fuentes futuras son contexto, no funcionali
 | `plant_locations` | ID del ejemplar, especie opcional, nombre científico original, coordenadas WGS84, distrito/barrio, fuente, ID externo, enlace y fecha de importación. |
 | `plant_names` | Nombre común de un ejemplar y su idioma (`es`, `ca`, etc.). |
 | `species_enrichments` | Descripción breve y extracto Wikipedia por especie/idioma, URL del artículo, Wikidata ID, fecha y foto opcional con créditos. |
+| `species_profiles` | Ficha editorial curada por especie/idioma: descripción, familia, floración, curiosidad y fuentes (`jsonb`). Texto verificado por el equipo; la foto sigue viniendo de `species_enrichments`. |
 
-`users` es la quinta tabla, conservada del scaffold. No se añaden tablas de observaciones que
+`users` es la sexta tabla, conservada del scaffold. No se añaden tablas de observaciones que
 todavía no utiliza ningún flujo. Pl@ntNet identifica fotografías; no persiste resultados.
 
 ```mermaid
@@ -23,6 +24,7 @@ erDiagram
   species ||--o{ plant_locations : agrupa
   plant_locations ||--o{ plant_names : tiene
   species ||--o{ species_enrichments : describe
+  species ||--o{ species_profiles : documenta
 ```
 
 Ejemplo: cuatro adelfas tienen cuatro filas en `plant_locations`, sus nombres es/ca en
@@ -94,6 +96,10 @@ ejecución y endpoints en el [README](../README.md).
   Incluye nombre científico original; no repite descripciones/licencias por árbol.
 - `GET /trees/:id`: añade nombres disponibles, distrito/barrio, enlace/fecha de origen y `species`.
 - `GET /species`: nombres distintos y enriquecimiento disponible, o campos `NULL` si falta.
+- `GET /species/:id`: ficha completa de una especie: fila del catálogo (con perfil editorial y
+  enriquecimiento resueltos por idioma, `content` ya resuelto con la precedencia editorial →
+  Wikipedia) y `locations` con el total y los ejemplares reales de la especie, paginados por
+  clave (`?afterLocationId=`, `?locationLimit=`). 400 si el id no es numérico, 404 si no existe.
 - `POST /species/enrich`: sin `lang`, busca especies sin ningún enriquecimiento Wikipedia y usa
   es → en como fallback. Con `lang=es`/`lang=en`, busca registros pendientes por especie/fuente/idioma
   y consulta solo esa edición. Puede añadir inglés a una especie con español sin sobrescribirlo.
@@ -113,6 +119,26 @@ atribución; `image` reúne foto y créditos. Son representaciones API, no copia
 Una foto sin condiciones reutilizables reconocidas no se guarda ni publica como `imageUrl`;
 se conserva el texto aunque falle la consulta de imagen. No se guarda una cola de fotos pendientes.
 Las imágenes se referencian por URL: no se descargan binarios a PostgreSQL.
+
+## Contenido editorial y seed
+
+`species_profiles` guarda el texto de la ficha verificado por el equipo (UT 918), separado del
+enriquecimiento automático: mismo `species_id`, ciclo de vida y procedencia distintos. La
+extracción combina ambas tablas con dos `lateral` por preferencia de idioma y deja el texto
+principal como `coalesce(profile.description, enrichment.extract, enrichment.description)`:
+lo curado manda; Wikipedia respalda y aporta la foto con créditos. Un CHECK exige que cada
+fila tenga descripción o curiosidad; las fuentes van en `sources` (`jsonb`, lista de
+`{name, description, url}`) para poder auditar cada texto (RNF6).
+
+La seed (`npm run db:seed`, `src/db/seedProfiles.ts`) carga las fichas de la demo en `es` y es
+**idempotente**: puede ejecutarse cualquier número de veces sin duplicar nada. Para cada especie:
+busca la fila `species` por nombre científico (cualquier fuente; el import municipal ya trae
+algunas) y le adjunta el perfil; solo crea una `species` con `source='NATUREMAPS'` si no existe.
+El perfil se inserta con upsert sobre su clave natural `(species_id, language)`: la primera vez
+inserta y las siguientes actualizan el texto, así que corregir un contenido es editar la seed y
+volver a ejecutarla, y añadir `va`/`en` no tocará lo existente. La seed nunca escribe en
+`plant_locations`, `plant_names` ni `species_enrichments`; los tests la ejecutan dos veces para
+garantizar la propiedad.
 
 ## Comandos y comprobación
 
@@ -141,7 +167,7 @@ ORDER BY table_name;
 ```
 
 Después de la migración inicial deben aparecer `plant_locations`, `plant_names`, `species`,
-`species_enrichments`, `users`. El historial está en otro esquema.
+`species_enrichments`, `species_profiles` (migración `0001`), `users`. El historial está en otro esquema.
 
 ## Fuera de alcance ahora
 

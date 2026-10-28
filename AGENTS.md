@@ -70,6 +70,7 @@ npm start              # node dist/index.js
 
 npm run db:generate    # migraciones SQL desde src/db/schema.ts -> drizzle/
 npm run db:migrate     # aplica migraciones
+npm run db:seed        # seed idempotente del contenido editorial (species_profiles)
 npm run db:push        # empuja el schema sin migraciones (solo prototipado)
 npm run db:studio      # Drizzle Studio
 node docs/check-db.mjs # SELECT de conexión; sin cambios en datos
@@ -118,7 +119,10 @@ las escrituras relacionadas. El importador usa un bloqueo transaccional por conj
 
 ## Modelo de datos y procedencia
 
-Catálogo actual: `species`, `plant_locations`, `plant_names`, `species_enrichments`.
+Catálogo actual: `species`, `plant_locations`, `plant_names`, `species_enrichments`,
+`species_profiles` (ficha editorial curada por especie/idioma, cargada con `npm run db:seed`,
+idempotente y adjunta al taxón existente por nombre científico; los textos curados mandan sobre
+Wikipedia con `coalesce` y las fotos siguen en `species_enrichments`).
 Consultar `docs/data-model.md` antes de cambiar importación o lectura. `users` se conserva.
 El usuario redujo expresamente el alcance a plantas, Wikipedia y la integración Pl@ntNet existente.
 No recrear logs, payloads completos ni infraestructura genérica para proveedores futuros.
@@ -181,6 +185,10 @@ incrementales; esta decisión puntual no autoriza nuevos resets.
 - `POST /species/enrich` — enriquece especies distintas de `trees` que aún no estén guardadas.
   Devuelve `{ totalSpecies, alreadyStored, enriched, notFound, failed }`.
 - `GET /species` — `{ total, species }`.
+- `GET /species/:id` — ficha completa: fila de catálogo + `profile` editorial + `enrichment` +
+  `image` con créditos, `content` resuelto (editorial → Wikipedia) y `locations` paginadas por
+  clave (`?afterLocationId=`, `?locationLimit=`, `?lang=`); 400 si el id no es numérico,
+  404 si no existe.
 
 Los `GET` no requieren parámetros para poder abrirlos en el navegador
 (`http://localhost:3000/trees/1`).

@@ -357,6 +357,85 @@ test('catalog import and HTTP API with isolated PostgreSQL', async (t) => {
       assert.ok(wikipediaSummaries.slice(spanishRequestsBefore).every((query) => query.language === 'es'))
       assert.equal(await count('species_enrichments'), 5)
     })
+
+    await t.test('seeded editorial profiles are idempotent and attach to species by name', async () => {
+      const { seedProfiles } = await import('../src/db/seedProfiles.ts')
+      const speciesBefore = await count('species')
+      const first = await seedProfiles()
+      // Phoenix dactylifera already exists (imported as male/female specimens, normalized
+      // to the binomial), so its profile attaches to that row instead of duplicating it.
+      assert.deepEqual(
+        { total: first.total, speciesCreated: first.speciesCreated, profilesUpserted: first.profilesUpserted },
+        { total: 6, speciesCreated: 5, profilesUpserted: 6 })
+      assert.equal(await count('species'), speciesBefore + 5)
+      assert.equal(await count('species_profiles'), 6)
+      const second = await seedProfiles()
+      assert.deepEqual(
+        { speciesCreated: second.speciesCreated, profilesUpserted: second.profilesUpserted },
+        { speciesCreated: 0, profilesUpserted: 6 })
+      assert.equal(await count('species'), speciesBefore + 5)
+      assert.equal(await count('species_profiles'), 6)
+      const jacaranda = (await pg.query(
+        "select id from species where scientific_name = 'Jacaranda mimosifolia' and source = 'NATUREMAPS'")).rows[0]
+      assert.ok(jacaranda, 'seeded species must exist exactly once')
+    })
+
+    await t.test('species detail serves the curated profile with editorial precedence and language fallback', async () => {
+      const jacaranda = (await pg.query("select id from species where scientific_name = 'Jacaranda mimosifolia'")).rows[0]
+      await pg.query(`insert into species_enrichments (species_id, language, source_url, extract)
+        values (${jacaranda.id}, 'es', 'https://es.wikipedia.org/wiki/Jacaranda_mimosifolia', 'Extracto Wikipedia Jacaranda')`)
+      const detail = (await request(`/species/${jacaranda.id}?lang=es`)).body
+      assert.equal(detail.profile.family, 'Bignoniaceae')
+      assert.equal(detail.profile.flowering, 'primavera')
+      assert.match(detail.profile.curiosity, /^su fruto es una cápsula leñosa/)
+      assert.equal(detail.profile.language, 'es')
+      assert.equal(detail.profile.sources.length, 3)
+      assert.equal(detail.profile.sources[0].name, 'Wikipedia (es)')
+      // Curated description wins over the Wikipedia extract (editorial first).
+      assert.match(detail.content, /^Árbol subtropical oriundo de Sudamérica/)
+      assert.notEqual(detail.content, 'Extracto Wikipedia Jacaranda')
+      assert.equal(detail.enrichment.content, 'Extracto Wikipedia Jacaranda')
+      // Without a profile in the requested language, Spanish falls back.
+      const english = (await request(`/species/${jacaranda.id}?lang=en`)).body
+      assert.equal(english.profile.language, 'es')
+      assert.match(english.content, /^Árbol subtropical oriundo de Sudamérica/)
+      const valencian = (await request(`/species/${jacaranda.id}?lang=ca-ES`)).body
+      assert.equal(valencian.profile.language, 'es')
+    })
+
+    await t.test('species detail validates the id and reports missing species', async () => {
+      assert.equal((await request('/species/abc')).status, 400)
+      assert.equal((await request('/species/0')).status, 400)
+      assert.equal((await request('/species/999999')).status, 404)
+      assert.equal((await request('/species/999999?locationLimit=0')).status, 400)
+      assert.equal((await request('/species/1?afterLocationId=-1')).status, 400)
+    })
+
+    await t.test('species detail pages locations by key without losing the total', async () => {
+      const jacaranda = (await pg.query("select id from species where scientific_name = 'Jacaranda mimosifolia'")).rows[0]
+      await pg.query(`insert into plant_locations
+        (species_id, latitude, longitude, district, neighborhood, source, external_id, source_url)
+        select ${jacaranda.id}, 39.47, -0.37, 'Distrito ' || g, 'Barrio ' || g,
+          'VALENCIA_ARBOLADO', 'seed-loc-' || g, 'https://geoportal.valencia.es/x'
+        from generate_series(1, 3) g`)
+      const firstPage = (await request(`/species/${jacaranda.id}?locationLimit=2`)).body
+      assert.equal(firstPage.locations.total, 3)
+      assert.equal(firstPage.locations.returned, 2)
+      assert.equal(firstPage.locations.items.length, 2)
+      assert.ok(firstPage.locations.items[0].id < firstPage.locations.items[1].id)
+      assert.equal(firstPage.locations.items[0].sourceUrl, 'https://geoportal.valencia.es/x')
+      const nextAfterId = firstPage.locations.nextAfterId
+      assert.ok(nextAfterId > firstPage.locations.items[0].id)
+      const secondPage = (await request(`/species/${jacaranda.id}?locationLimit=2&afterLocationId=${nextAfterId}`)).body
+      assert.equal(secondPage.locations.total, 3)
+      assert.equal(secondPage.locations.returned, 1)
+      assert.equal(secondPage.locations.nextAfterId, null)
+      // A seeded species without inventory locations still returns a well-formed page.
+      const tipuana = (await pg.query("select id from species where scientific_name = 'Tipuana tipu'")).rows[0]
+      const empty = (await request(`/species/${tipuana.id}?locationLimit=2`)).body
+      assert.deepEqual({ total: empty.locations.total, returned: empty.locations.returned, items: empty.locations.items },
+        { total: 0, returned: 0, items: [] })
+    })
   } finally {
     if (server) await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))
     globalThis.fetch = originalFetch

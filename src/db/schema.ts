@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { check, doublePrecision, index, integer, pgTable, serial, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import { check, doublePrecision, index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
@@ -75,4 +75,26 @@ export const speciesEnrichments = pgTable('species_enrichments', {
   check('species_enrichments_text_check', sql`coalesce(length(trim(${table.extract})), 0) > 0 or coalesce(length(trim(${table.description})), 0) > 0`),
   check('species_enrichments_source_check', sql`length(trim(${table.source})) > 0 and length(trim(${table.language})) > 0 and length(trim(${table.sourceUrl})) > 0`),
   check('species_enrichments_image_check', sql`${table.imageUrl} is null or (${table.imageSourceUrl} is not null and ${table.imageAuthor} is not null and ${table.imageLicense} is not null and ${table.imageLicenseUrl} is not null and ${table.imageAttribution} is not null)`),
+])
+
+// Curated editorial ficha content, one row per species and language. It is
+// written by the team (seed), not fetched: species_enrichments stays the
+// Wikipedia-only table, with its own semantics and image credit checks.
+// `family` is Latin and language-neutral, but it lives on the same row because
+// it is seeded and read together with the localized editorial text.
+// Photos never live here: they come from species_enrichments with credits.
+export const speciesProfiles = pgTable('species_profiles', {
+  id: serial('id').primaryKey(),
+  speciesId: integer('species_id').notNull().references(() => species.id, { onDelete: 'cascade' }),
+  language: text('language').notNull(),
+  description: text('description'),
+  family: text('family'),
+  flowering: text('flowering'),
+  curiosity: text('curiosity'),
+  sources: jsonb('sources'),
+}, (table) => [
+  uniqueIndex('species_profiles_species_language_unique').on(table.speciesId, table.language),
+  check('species_profiles_text_check', sql`coalesce(length(trim(${table.description})), 0) > 0 or coalesce(length(trim(${table.curiosity})), 0) > 0`),
+  check('species_profiles_sources_check', sql`${table.sources} is null or jsonb_typeof(${table.sources}) = 'array'`),
+  check('species_profiles_language_check', sql`length(trim(${table.language})) > 0`),
 ])
