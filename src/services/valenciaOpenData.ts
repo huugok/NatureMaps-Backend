@@ -9,6 +9,10 @@ export const VALENCIA_SOURCE = {
   license: 'CC BY 4.0',
   licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
   attribution: 'Fuente de los datos: Ajuntament de València – Dades Obertes. Campos normalizados por Nature MAPS.',
+  // Logo que el propio portal muestra como organización del conjunto de datos. CC BY cubre los datos,
+  // no necesariamente el uso del escudo: confirmar antes de mostrarlo. Si es null, la ficha usa
+  // solo `provider` y `attribution` como identificación de la fuente.
+  logoUrl: 'https://www.valencia.es/o/valencia-theme/css/img/Ajuntament_logo_compacto.png',
 }
 
 const ENDPOINT = 'https://geoportal.valencia.es/server/rest/services/OPENDATA/MedioAmbiente/MapServer/151/query'
