@@ -42,8 +42,8 @@ Para consultar el archivo desde otro clon: `git fetch origin tag archive/explore
 y después `git show archive/explore-open-data:<ruta>`.
 Las instrucciones actuales para agentes se mantienen solo en este archivo; no copiar las del prototipo.
 
-En `feat/plant-data-model`, `docs/data-model.md` describe cuatro tablas de catálogo, con `users`
-conservada del scaffold. Solo queda `0000_plant_catalog`; el reinicio experimental se describe
+En `feat/plant-data-model`, `docs/data-model.md` describe seis tablas de catálogo (incluye `species_profiles` y `data_sources`), con `users`
+conservada del scaffold. Migraciones: `0000_plant_catalog`, `0001_nifty_lady_ursula` (`species_profiles`) y `0002_data_sources`; el reinicio experimental se describe
 en «Decisión de reinicio de la base de prueba», más abajo. `/trees` y `/species` usan el modelo simplificado;
 Wikipedia, Wikidata e imágenes están adaptados.
 Documentación vigente: [README.md](README.md) para comandos y
@@ -71,6 +71,7 @@ npm start              # node dist/index.js
 npm run db:generate    # migraciones SQL desde src/db/schema.ts -> drizzle/
 npm run db:migrate     # aplica migraciones
 npm run db:seed        # seed idempotente del contenido editorial (species_profiles)
+npm run import:arbolado # descarga el inventario de Valencia (--limit, --offset); requiere DATABASE_URL
 npm run db:push        # empuja el schema sin migraciones (solo prototipado)
 npm run db:studio      # Drizzle Studio
 node docs/check-db.mjs # SELECT de conexión; sin cambios en datos
@@ -134,6 +135,7 @@ las escrituras relacionadas. El importador usa un bloqueo transaccional por conj
 ## Modelo de datos y procedencia
 
 Catálogo actual: `species`, `plant_locations`, `plant_names`, `species_enrichments`,
+`data_sources` (licencia, atribución, logo y fecha de descarga por fuente),
 `species_profiles` (ficha editorial curada por especie/idioma, cargada con `npm run db:seed`,
 idempotente y adjunta al taxón existente por nombre científico; los textos curados mandan sobre
 Wikipedia con `coalesce` y las fotos siguen en `species_enrichments`).
@@ -195,7 +197,8 @@ incrementales; esta decisión puntual no autoriza nuevos resets.
 - `POST /trees/import?limit=200` — descarga N árboles del endpoint ArcGIS de Valencia y los inserta
   (idempotente). Devuelve `{ fetched, stored }`.
 - `GET /trees?limit=200` — `{ total, returned, limit, trees }`.
-- `GET /trees/:id` — árbol + su `species` (o `null`); 400 si el id no es numérico, 404 si no existe.
+- `GET /sources`, `GET /sources/:code` — fuentes con licencia, atribución, logo y fecha de descarga.
+- `GET /trees/:id` — árbol + su `dataSource` (o `null` hasta la primera importación) + su `species` (o `null`); 400 si el id no es numérico, 404 si no existe.
 - `POST /species/enrich` — enriquece especies distintas de `trees` que aún no estén guardadas.
   Devuelve `{ totalSpecies, alreadyStored, enriched, notFound, failed }`.
 - `GET /species` — `{ total, species }`.

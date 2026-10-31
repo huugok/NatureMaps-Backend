@@ -8,6 +8,25 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
+// Fuente externa de datos: quién la publica, con qué licencia y cuándo se descargó por última vez.
+// `code` es el mismo valor que guardan species.source y plant_locations.source (texto, sin clave
+// foránea porque esas columnas ya existen como texto libre). Una fila por fuente, no por descarga.
+export const dataSources = pgTable('data_sources', {
+  id: serial('id').primaryKey(),
+  code: text('code').notNull(),
+  provider: text('provider').notNull(),
+  name: text('name').notNull(),
+  url: text('url').notNull(),
+  license: text('license').notNull(),
+  licenseUrl: text('license_url').notNull(),
+  attribution: text('attribution').notNull(),
+  logoUrl: text('logo_url'),
+  lastDownloadedAt: timestamp('last_downloaded_at', { withTimezone: true }),
+}, (table) => [
+  uniqueIndex('data_sources_code_unique').on(table.code),
+  check('data_sources_text_check', sql`length(trim(${table.code})) > 0 and length(trim(${table.provider})) > 0 and length(trim(${table.name})) > 0 and length(trim(${table.url})) > 0 and length(trim(${table.license})) > 0 and length(trim(${table.licenseUrl})) > 0 and length(trim(${table.attribution})) > 0`),
+])
+
 // Names are matched within one source, not assumed to be global taxonomic IDs.
 export const species = pgTable('species', {
   id: serial('id').primaryKey(),

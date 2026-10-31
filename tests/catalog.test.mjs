@@ -436,6 +436,87 @@ test('catalog import and HTTP API with isolated PostgreSQL', async (t) => {
       assert.deepEqual({ total: empty.locations.total, returned: empty.locations.returned, items: empty.locations.items },
         { total: 0, returned: 0, items: [] })
     })
+
+    const downloadedAt = async () => new Date((await pg.query(
+      "select last_downloaded_at from data_sources where code = 'VALENCIA_ARBOLADO'")).rows[0].last_downloaded_at).getTime()
+
+    await t.test('data source keeps license, attribution, logo and download time', async () => {
+      const list = await request('/sources')
+      assert.equal(list.status, 200)
+      assert.equal(list.body.sources.length, 1)
+      const source = list.body.sources[0]
+      assert.equal(source.code, 'VALENCIA_ARBOLADO')
+      assert.equal(source.provider, 'Ajuntament de València')
+      assert.equal(source.license, 'CC BY 4.0')
+      assert.match(source.licenseUrl, /creativecommons\.org\/licenses\/by\/4\.0/)
+      assert.match(source.attribution, /Ajuntament de València/)
+      assert.match(source.logoUrl, /^https:\/\//)
+      assert.ok(Math.abs(Date.now() - Date.parse(source.lastDownloadedAt)) < 120_000)
+      assert.equal(source.storedRecords, await count('plant_locations'))
+      const detail = await request('/sources/VALENCIA_ARBOLADO')
+      assert.equal(detail.status, 200)
+      assert.equal(detail.body.license, 'CC BY 4.0')
+      assert.equal((await request('/sources/NO_EXISTE')).status, 404)
+    })
+
+    await t.test('invalid source codes are rejected before contacting the database', async () => {
+      const before = databaseCalls
+      assert.equal((await request('/sources/bad%20code!')).status, 400)
+      assert.equal((await request('/sources/lowercase')).status, 400)
+      assert.equal(databaseCalls, before)
+    })
+
+    await t.test('tree detail carries the source for the ficha and the compact list does not', async () => {
+      const list = (await request('/trees?limit=1')).body
+      assert.equal(list.trees[0].dataSource, undefined)
+      const detail = (await request(`/trees/${list.trees[0].id}`)).body
+      assert.equal(detail.dataSource.provider, 'Ajuntament de València')
+      assert.equal(detail.dataSource.license, 'CC BY 4.0')
+      assert.match(detail.dataSource.logoUrl, /^https:\/\//)
+      assert.ok(detail.dataSource.lastDownloadedAt)
+      assert.equal(detail.dataSource.storedRecords, undefined)
+    })
+
+    await t.test('repeating an import refreshes the download time without duplicating the source', async () => {
+      const first = await downloadedAt()
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      assert.equal((await request('/trees/import', 'POST')).status, 200)
+      assert.ok(await downloadedAt() > first)
+      assert.equal(await count('data_sources'), 1)
+    })
+
+    await t.test('failed downloads or failed saves leave the registered download time unchanged', async () => {
+      const before = await downloadedAt()
+      upstreamFailure = true
+      try { assert.equal((await request('/trees/import', 'POST')).status, 502) }
+      finally { upstreamFailure = false }
+      assert.equal(await downloadedAt(), before)
+      await pg.exec(`create function reject_test_name() returns trigger language plpgsql as $$
+        begin if new.name = 'REJECT' then raise exception 'fixture rejection'; end if; return new; end $$;
+        create trigger reject_name before insert on plant_names for each row execute function reject_test_name();`)
+      const original = fixtures
+      fixtures = [feature('rollback-source', 'Pinus pinea', 'REJECT')]
+      try { assert.equal((await request('/trees/import', 'POST')).status, 500) }
+      finally {
+        fixtures = original
+        await pg.exec('drop trigger reject_name on plant_names; drop function reject_test_name();')
+      }
+      assert.equal(await downloadedAt(), before)
+    })
+
+    await t.test('import-all walks every page, stops at the end and can resume from an offset', async () => {
+      const { importAllValenciaInventory } = await import('../src/services/inventoryImport.ts')
+      fixtures = ['all-1', 'all-2', 'all-3', 'all-4', 'all-5'].map((id) => feature(id))
+      const before = await count('plant_locations')
+      const offsets = []
+      const totals = await importAllValenciaInventory({ limit: 2, onPage: (page) => offsets.push(page.offset) })
+      assert.deepEqual(offsets, [0, 2, 4])
+      assert.deepEqual(totals, { pages: 3, fetched: 5, stored: 5, excluded: 0, skipped: 0, failed: 0 })
+      assert.equal(await count('plant_locations'), before + 5)
+      const resumed = await importAllValenciaInventory({ limit: 2, offset: 2 })
+      assert.deepEqual(resumed, { pages: 2, fetched: 3, stored: 0, excluded: 0, skipped: 3, failed: 0 })
+      assert.equal(await count('plant_locations'), before + 5)
+    })
   } finally {
     if (server) await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))
     globalThis.fetch = originalFetch
