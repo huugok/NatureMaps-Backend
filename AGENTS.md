@@ -70,6 +70,7 @@ npm start              # node dist/index.js
 
 npm run db:generate    # migraciones SQL desde src/db/schema.ts -> drizzle/
 npm run db:migrate     # aplica migraciones
+npm run db:seed        # seed idempotente del contenido editorial (species_profiles)
 npm run db:push        # empuja el schema sin migraciones (solo prototipado)
 npm run db:studio      # Drizzle Studio
 node docs/check-db.mjs # SELECT de conexión; sin cambios en datos
@@ -89,6 +90,20 @@ un upstream ficticio; no demuestra disponibilidad de Neon ni del ArcGIS público
 - `PORT` — puerto HTTP (por defecto `3000`).
 
 Nunca leer, imprimir ni commitear valores reales de `.env`.
+
+### Rotación de credenciales
+
+- **2026-10-28 — `DATABASE_URL` rotada.** La cadena de conexión de Neon quedó
+  expuesta en una sesión de trabajo (chat del agente) y se restableció la
+  contraseña en Neon. **Si tenías la cadena anterior configurada en tu `.env`
+  local, ya no funciona**: pide la cadena nueva y actualiza tu `.env`. La
+  cadena válida vive únicamente en `.env`; cualquier copia anterior (historial
+  de chat incluido) es inválida: no usarla, no compartirla y rotar de nuevo si
+  reaparece en algún sitio.
+- **2026-10-28 — `PLANTNET_API_KEY` rotada** (quedó expuesta en esa misma
+  sesión). **Si tenías la clave anterior configurada, ya no funciona**: pide
+  la nueva y actualiza tu `.env`. La clave válida vive únicamente en `.env`;
+  cualquier copia anterior es inválida.
 
 ## Estructura y capas
 
@@ -118,7 +133,10 @@ las escrituras relacionadas. El importador usa un bloqueo transaccional por conj
 
 ## Modelo de datos y procedencia
 
-Catálogo actual: `species`, `plant_locations`, `plant_names`, `species_enrichments`.
+Catálogo actual: `species`, `plant_locations`, `plant_names`, `species_enrichments`,
+`species_profiles` (ficha editorial curada por especie/idioma, cargada con `npm run db:seed`,
+idempotente y adjunta al taxón existente por nombre científico; los textos curados mandan sobre
+Wikipedia con `coalesce` y las fotos siguen en `species_enrichments`).
 Consultar `docs/data-model.md` antes de cambiar importación o lectura. `users` se conserva.
 El usuario redujo expresamente el alcance a plantas, Wikipedia y la integración Pl@ntNet existente.
 No recrear logs, payloads completos ni infraestructura genérica para proveedores futuros.
@@ -181,6 +199,10 @@ incrementales; esta decisión puntual no autoriza nuevos resets.
 - `POST /species/enrich` — enriquece especies distintas de `trees` que aún no estén guardadas.
   Devuelve `{ totalSpecies, alreadyStored, enriched, notFound, failed }`.
 - `GET /species` — `{ total, species }`.
+- `GET /species/:id` — ficha completa: fila de catálogo + `profile` editorial + `enrichment` +
+  `image` con créditos, `content` resuelto (editorial → Wikipedia) y `locations` paginadas por
+  clave (`?afterLocationId=`, `?locationLimit=`, `?lang=`); 400 si el id no es numérico,
+  404 si no existe.
 
 Los `GET` no requieren parámetros para poder abrirlos en el navegador
 (`http://localhost:3000/trees/1`).
