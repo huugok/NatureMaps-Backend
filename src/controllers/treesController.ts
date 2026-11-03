@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express'
 import { CatalogError } from '../services/catalogError.js'
 import { importValenciaInventory } from '../services/inventoryImport.js'
-import { getTree, listTrees } from '../services/treeCatalog.js'
+import { getTree, listNearbyTrees, listTrees } from '../services/treeCatalog.js'
 
 function integer(value: unknown, fallback: number, min: number, max: number, name: string): number {
   if (value === undefined) return fallback
@@ -19,6 +19,13 @@ function language(value: unknown): string {
     if (!canonical) throw new Error('Missing language')
     return canonical
   } catch { throw new CatalogError(400, 'lang no es válido') }
+}
+
+function decimal(value: unknown, name: string, min: number, max: number): number {
+  if (typeof value !== 'string' || !/^-?\d+(\.\d+)?$/.test(value)) throw new CatalogError(400, `${name} debe ser un número entre ${min} y ${max}`)
+  const number = Number(value)
+  if (!Number.isFinite(number) || number < min || number > max) throw new CatalogError(400, `${name} debe ser un número entre ${min} y ${max}`)
+  return number
 }
 
 function sendError(res: Response, error: unknown) {
@@ -43,6 +50,16 @@ export async function treesList(req: Request, res: Response) {
     const limit = integer(req.query.limit, 20, 1, 200, 'limit')
     const offset = integer(req.query.offset, 0, 0, 10_000_000, 'offset')
     res.json(await listTrees(limit, offset, language(req.query.lang)))
+  } catch (error) { sendError(res, error) }
+}
+
+export async function treesNearby(req: Request, res: Response) {
+  try {
+    const lat = decimal(req.query.lat, 'lat', -90, 90)
+    const lon = decimal(req.query.lon, 'lon', -180, 180)
+    const radius = integer(req.query.radius, 1000, 50, 5000, 'radius')
+    const limit = integer(req.query.limit, 100, 1, 200, 'limit')
+    res.json(await listNearbyTrees(lat, lon, radius, limit, language(req.query.lang)))
   } catch (error) { sendError(res, error) }
 }
 

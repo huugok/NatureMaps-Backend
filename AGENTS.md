@@ -195,6 +195,7 @@ incrementales; esta decisión puntual no autoriza nuevos resets.
 - `POST /trees/import?limit=200` — descarga N árboles del endpoint ArcGIS de Valencia y los inserta
   (idempotente). Devuelve `{ fetched, stored }`.
 - `GET /trees?limit=200` — `{ total, returned, limit, trees }`.
+- `GET /trees/nearby?lat=…&lon=…&radius=1000&limit=100&lang=es` — plantas más cercanas a un punto (línea recta, `distance` en metros), ordenadas por distancia; `radius` 50–5000, `limit` 1–200. 400 si `lat`/`lon` faltan o no son numéricos.
 - `GET /trees/:id` — árbol + su `species` (o `null`); 400 si el id no es numérico, 404 si no existe.
 - `POST /species/enrich` — enriquece especies distintas de `trees` que aún no estén guardadas.
   Devuelve `{ totalSpecies, alreadyStored, enriched, notFound, failed }`.

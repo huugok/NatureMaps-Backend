@@ -87,6 +87,7 @@ Invoke-RestMethod "http://localhost:3000/species?lang=es"
 | `GET /health` | Comprueba HTTP; no consulta la base. |
 | `POST /trees/import?limit=20&offset=0` | Importa una página (1–200 registros), sin duplicar plantas existentes. |
 | `GET /trees?limit=20&offset=0&lang=es` | Lista ligera para el mapa: nombres, especie, coordenadas e IDs. |
+| `GET /trees/nearby?lat=39.4779&lon=-0.3778&radius=1000&limit=100&lang=es` | Plantas más cercanas a un punto (línea recta, `distance` en metros), ordenadas por distancia. `radius` 50–5000 (default 1000), `limit` 1–200 (default 100). |
 | `GET /trees/:id?lang=ca` | Ficha con nombres disponibles, procedencia y especie enriquecida. |
 | `POST /species/enrich?limit=20` | Wikipedia para especies pendientes; admite `lang=es`/`lang=en` y `afterId`. Sin `lang`, conserva el fallback es → en. |
 | `GET /species?lang=es` | Nombres distintos por especie y enriquecimiento disponible. |
