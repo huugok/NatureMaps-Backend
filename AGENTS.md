@@ -164,6 +164,12 @@ Tablas del prototipo archivado (no confundir con la migración inicial nueva):
 **Procedencia mínima**: guardar referencias de origen de plantas y enriquecimientos, heredando
 lo común sin duplicar tablas/metadatos. Las inserciones deben ser idempotentes sobre su clave natural.
 
+UT 924: `src/services/provenance.ts` normaliza entidad, enlace y fecha o versión en
+`provenance` para árboles, especies y ubicaciones. Contrato y fechas en
+`docs/source-provenance.md`. Reutiliza los datos actuales sin migración; los GET no
+actualizan fuentes antiguas. `npm run test:catalog` incluye sus pruebas unitarias.
+
+
 ### Decisión de reinicio de la base de prueba
 
 Durante la preparación de esta PR, su autor decidió sustituir las migraciones experimentales por
