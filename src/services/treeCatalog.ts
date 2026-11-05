@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
 import { db } from '../db/index.js'
+import { getDataSource } from './dataSources.js'
 import { getSpecies } from './speciesCatalog.js'
 
 type TreeRow = {
@@ -47,5 +48,8 @@ export async function listTrees(limit: number, offset: number, language: string)
 export async function getTree(id: number, language: string) {
   const row = (await selectTrees(language, sql`p.id = ${id}`, 1, 0, true)).rows[0]
   if (!row) return null
-  return { ...publicTree(row), species: row.speciesId ? await getSpecies(row.speciesId, language) : null }
+  // dataSource: organismo, licencia, atribución, logo y fecha de descarga para mostrar en la ficha.
+  // Es null si esa fuente aún no se ha registrado (se registra en la primera importación).
+  return { ...publicTree(row), dataSource: await getDataSource(row.source),
+    species: row.speciesId ? await getSpecies(row.speciesId, language) : null }
 }

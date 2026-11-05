@@ -43,7 +43,7 @@ mensaje sin credenciales. Tiempo de espera máximo: 20 segundos.
 
 ## Modelo y migración actual
 
-El catálogo tiene **cuatro tablas**, además de `users`:
+El catálogo tiene **seis tablas**, además de `users`:
 
 | Tabla | Contenido |
 |---|---|
@@ -51,11 +51,13 @@ El catálogo tiene **cuatro tablas**, además de `users`:
 | `plant_locations` | Planta, coordenadas, especie, nombre original y referencia municipal. |
 | `plant_names` | Nombres comunes por ejemplar e idioma. |
 | `species_enrichments` | Texto Wikipedia, Wikidata ID, idioma, enlace y foto opcional con créditos. |
+| `species_profiles` | Ficha editorial curada por especie e idioma (se carga con `npm run db:seed`). |
+| `data_sources` | Una fila por fuente de datos: organismo, licencia, atribución, logo y fecha de la última descarga. |
 
 El esquema está en `src/db/schema.ts`. La [guía del modelo](docs/data-model.md) explica relaciones,
 normalización, límites y organización del código.
 
-Solo hay una migración inicial: `0000_plant_catalog.sql`, generada desde el esquema actual.
+Migraciones: `0000_plant_catalog.sql` (inicial), `0001_nifty_lady_ursula.sql` (`species_profiles`) y `0002_data_sources.sql` (`data_sources`).
 El reinicio de la base de desarrollo ya se completó. Para una instalación nueva usa una base vacía;
 los siguientes cambios de esquema se aplican mediante migraciones incrementales.
 
@@ -87,7 +89,9 @@ Invoke-RestMethod "http://localhost:3000/species?lang=es"
 | `GET /health` | Comprueba HTTP; no consulta la base. |
 | `POST /trees/import?limit=20&offset=0` | Importa una página (1–200 registros), sin duplicar plantas existentes. |
 | `GET /trees?limit=20&offset=0&lang=es` | Lista ligera para el mapa: nombres, especie, coordenadas e IDs. |
-| `GET /trees/:id?lang=ca` | Ficha con nombres disponibles, procedencia y especie enriquecida. |
+| `GET /trees/:id?lang=ca` | Ficha con nombres disponibles, procedencia, `dataSource` (organismo, licencia, atribución, logo, fecha de descarga) y especie enriquecida. |
+| `GET /sources` | Fuentes de datos registradas con licencia, atribución, logo y fecha de última descarga. |
+| `GET /sources/:code` | Una fuente (p. ej. `VALENCIA_ARBOLADO`) con `storedRecords`. |
 | `POST /species/enrich?limit=20` | Wikipedia para especies pendientes; admite `lang=es`/`lang=en` y `afterId`. Sin `lang`, conserva el fallback es → en. |
 | `GET /species?lang=es` | Nombres distintos por especie y enriquecimiento disponible. |
 | `POST /plants/identify` | Integración Pl@ntNet existente; ver su guía. |
@@ -142,6 +146,7 @@ de APIs externas. No hay linter ni comando `npm test`.
 | `npm.cmd run db:generate -- --name=nombre_del_cambio` | Genera SQL y snapshot locales desde el esquema; no modifica Neon. |
 | `npm.cmd run db:migrate` | Aplica SQL pendiente a la base configurada. |
 | `npm.cmd run db:studio` | Abre Drizzle Studio. |
+| `npm.cmd run import:arbolado -- --limit=200 --offset=0` | Descarga el inventario de arbolado de Valencia (CC BY 4.0) página a página; requiere `DATABASE_URL`. Registra licencia y hora de descarga; si falla indica `--offset` para reanudar. |
 | `npm.cmd run db:push` | Solo prototipado; no usar para este cambio versionado. |
 
 Principio: cambiar esquema → generar/revisar migración → comprobar localmente → aplicar → cargar datos.
