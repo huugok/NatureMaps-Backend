@@ -436,6 +436,41 @@ test('catalog import and HTTP API with isolated PostgreSQL', async (t) => {
       assert.deepEqual({ total: empty.locations.total, returned: empty.locations.returned, items: empty.locations.items },
         { total: 0, returned: 0, items: [] })
     })
+    await t.test('UT 924 exposes complete provenance on every plant and species, including old editorial JSON', async () => {
+      const plants = (await request('/trees?limit=100')).body.trees
+      assert.ok(plants.length > 0)
+      for (const plant of plants) {
+        assert.equal(plant.provenance.length, 1)
+        assert.equal(plant.provenance[0].provider, 'Ajuntament de València')
+        assert.equal(new URL(plant.provenance[0].url).hostname, 'geoportal.valencia.es')
+        assert.equal(plant.provenance[0].dateType, 'imported')
+        assert.ok(plant.provenance[0].date)
+      }
+      const tree = (await request('/trees/' + plants[0].id)).body
+      assert.deepEqual(tree.provenance, plants[0].provenance)
+      const species = (await request('/species?limit=100')).body.species
+      assert.ok(species.length > 0)
+      for (const item of species) {
+        assert.ok(item.provenance.length > 0, item.scientificName)
+        for (const source of item.provenance) {
+          assert.ok(source.provider, item.scientificName)
+          assert.ok(source.date || source.version, item.scientificName)
+          assert.equal(new URL(source.url).protocol, 'https:')
+        }
+      }
+      const jacaranda = species.find((item) => item.scientificName === 'Jacaranda mimosifolia')
+      // Recreate JSON already stored before UT 924 (no new metadata).
+      await pg.query('update species_profiles set sources = $1::jsonb where species_id = $2', [JSON.stringify([
+        { name: 'Wikipedia (es)', description: 'CC BY-SA · Consulta 25/10/2026', url: 'https://es.wikipedia.org/wiki/Jacaranda_mimosifolia' }
+      ]), jacaranda.id])
+      const detail = (await request('/species/' + jacaranda.id + '?locationLimit=1')).body
+      assert.equal(detail.provenance[0].date, '2026-10-25')
+      assert.equal(detail.provenance[0].provider, 'Wikimedia Foundation')
+      const latest = (await pg.query('select max(imported_at) as date from plant_locations where species_id = $1', [jacaranda.id])).rows[0].date
+      assert.equal(detail.provenance.find((source) => source.scope === 'inventory').date, latest.toISOString())
+      assert.equal(detail.locations.items[0].provenance[0].url, 'https://geoportal.valencia.es/x')
+      assert.ok(detail.locations.items[0].importedAt)
+    })
   } finally {
     if (server) await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))
     globalThis.fetch = originalFetch

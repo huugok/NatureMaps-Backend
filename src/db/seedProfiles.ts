@@ -27,6 +27,7 @@
 import { sql } from 'drizzle-orm'
 import { pathToFileURL } from 'node:url'
 import { db } from './index.js'
+import { editorialReference } from '../services/provenance.js'
 
 interface EditorialSource { name: string, description: string, url: string }
 interface EditorialSpecies {
@@ -188,7 +189,7 @@ export async function seedProfiles(): Promise<SeedProfilesResult> {
     await db.execute(sql`
       insert into species_profiles (species_id, language, description, family, flowering, curiosity, sources)
       values (${species.id}, 'es', ${entry.description}, ${entry.family}, ${entry.flowering},
-        ${entry.curiosity}, ${JSON.stringify(entry.sources)}::jsonb)
+        ${entry.curiosity}, ${JSON.stringify(entry.sources.map(editorialReference))}::jsonb)
       on conflict (species_id, language) do update set
         description = excluded.description,
         family = excluded.family,

@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
 import { db } from '../db/index.js'
+import { inventoryReference, withSpeciesProvenance } from './provenance.js'
 
 function selectSpecies(condition: SQL, limit: number, offset: number, language: string) {
   const languages = [...new Set([language, language.split('-')[0] ?? language, 'es', 'ca', 'en'])]
@@ -13,6 +14,9 @@ function selectSpecies(condition: SQL, limit: number, offset: number, language: 
       e.description, e.extract as "culturalExtract", e.language as "wikipediaLang",
       e.source_url as "wikipediaUrl", e.wikidata_id as "wikidataId", e.image_url as "imageUrl",
       e.source, e.fetched_at as "fetchedAt",
+      coalesce((select jsonb_agg(jsonb_build_object('source', inventory.source, 'url', inventory.url, 'date', inventory.date) order by inventory.source)
+        from (select source, min(source_url) as url, max(imported_at) as date
+          from plant_locations where species_id = s.id group by source) inventory), '[]'::jsonb) as "inventorySources",
       coalesce(p.description, e.extract, e.description) as content,
       case when p.id is not null then jsonb_build_object(
         'language', p.language, 'description', p.description, 'family', p.family,
@@ -44,11 +48,12 @@ export async function listSpecies(limit: number, offset: number, language: strin
     selectSpecies(sql`true`, limit, offset, language),
     db.execute<{ total: number }>(sql`select count(*)::int as total from species`),
   ])
-  return { total: count.rows[0]?.total ?? 0, returned: rows.rows.length, limit, offset, species: rows.rows }
+  return { total: count.rows[0]?.total ?? 0, returned: rows.rows.length, limit, offset, species: rows.rows.map(withSpeciesProvenance) }
 }
 
 export async function getSpecies(id: number, language: string) {
-  return (await selectSpecies(sql`s.id = ${id}`, 1, 0, language)).rows[0] ?? null
+  const row = (await selectSpecies(sql`s.id = ${id}`, 1, 0, language)).rows[0]
+  return row ? withSpeciesProvenance(row) : null
 }
 
 export interface SpeciesDetail extends Record<string, unknown> {
@@ -57,7 +62,7 @@ export interface SpeciesDetail extends Record<string, unknown> {
     returned: number
     nextAfterId: number | null
     items: Array<{ id: number, latitude: number, longitude: number, district: string | null,
-      neighborhood: string | null, source: string, sourceUrl: string }>
+      neighborhood: string | null, source: string, sourceUrl: string, importedAt: string }>
   }
 }
 
@@ -71,14 +76,14 @@ export async function getSpeciesDetail(id: number, language: string, locationLim
   const [totals, page] = await Promise.all([
     db.execute<{ total: number }>(sql`select count(*)::int as total from plant_locations where species_id = ${id}`),
     db.execute<{ id: number, latitude: number, longitude: number, district: string | null,
-      neighborhood: string | null, source: string, sourceUrl: string }>(sql`
-      select id, latitude, longitude, district, neighborhood, source, source_url as "sourceUrl"
+      neighborhood: string | null, source: string, sourceUrl: string, importedAt: string }>(sql`
+      select id, latitude, longitude, district, neighborhood, source, source_url as "sourceUrl", imported_at as "importedAt"
       from plant_locations
       where species_id = ${id} and id > ${afterLocationId}
       order by id
       limit ${locationLimit}`),
   ])
-  const items = page.rows
+  const items = page.rows.map((row) => ({ ...row, provenance: [inventoryReference(row.source, row.sourceUrl, row.importedAt)] }))
   return {
     ...species,
     locations: {
