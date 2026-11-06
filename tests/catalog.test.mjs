@@ -488,6 +488,8 @@ test('catalog import and HTTP API with isolated PostgreSQL', async (t) => {
       } finally {
         await pg.query("delete from plant_locations where source = 'TEST'")
       }
+    })
+
     const downloadedAt = async () => new Date((await pg.query(
       "select last_downloaded_at from data_sources where code = 'VALENCIA_ARBOLADO'")).rows[0].last_downloaded_at).getTime()
 
