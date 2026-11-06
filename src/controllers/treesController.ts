@@ -57,8 +57,8 @@ export async function treesNearby(req: Request, res: Response) {
   try {
     const lat = decimal(req.query.lat, 'lat', -90, 90)
     const lon = decimal(req.query.lon, 'lon', -180, 180)
-    const radius = integer(req.query.radius, 1000, 50, 5000, 'radius')
-    const limit = integer(req.query.limit, 100, 1, 200, 'limit')
+    const radius = integer(req.query.radius, 1000, 50, 10000, 'radius')
+    const limit = integer(req.query.limit, 100, 1, 1000, 'limit')
     res.json(await listNearbyTrees(lat, lon, radius, limit, language(req.query.lang)))
   } catch (error) { sendError(res, error) }
 }

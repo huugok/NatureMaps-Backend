@@ -6,7 +6,7 @@ Guardar especie, nombre común por idioma, coordenadas e identificador de cada p
 el inventario para las pantallas. Conservar el enriquecimiento Wikipedia del prototipo y la
 integración Pl@ntNet de `main`. Las fuentes futuras son contexto, no funcionalidades implementadas.
 
-## Esquema actual: cinco tablas de catálogo
+## Esquema actual: seis tablas de catálogo
 
 | Tabla | Datos y responsabilidad |
 |---|---|
@@ -15,8 +15,9 @@ integración Pl@ntNet de `main`. Las fuentes futuras son contexto, no funcionali
 | `plant_names` | Nombre común de un ejemplar y su idioma (`es`, `ca`, etc.). |
 | `species_enrichments` | Descripción breve y extracto Wikipedia por especie/idioma, URL del artículo, Wikidata ID, fecha y foto opcional con créditos. |
 | `species_profiles` | Ficha editorial curada por especie/idioma: descripción, familia, floración, curiosidad y fuentes (`jsonb`). Texto verificado por el equipo; la foto sigue viniendo de `species_enrichments`. |
+| `data_sources` | Una fila por fuente (`code` = `source` de `species`/`plant_locations`, sin FK): organismo, nombre, URL, licencia y su URL, atribución, logo opcional y `last_downloaded_at`. Se crea/actualiza en la misma transacción que cada importación. |
 
-`users` es la sexta tabla, conservada del scaffold. No se añaden tablas de observaciones que
+`users` es la séptima tabla, conservada del scaffold. No se añaden tablas de observaciones que
 todavía no utiliza ningún flujo. Pl@ntNet identifica fotografías; no persiste resultados.
 
 ```mermaid
@@ -94,7 +95,8 @@ ejecución y endpoints en el [README](../README.md).
 
 - `GET /trees`: lista ligera con ID, especie, nombre elegido, coordenadas, fuente e ID externo.
   Incluye nombre científico original; no repite descripciones/licencias por árbol.
-- `GET /trees/:id`: añade nombres disponibles, distrito/barrio, enlace/fecha de origen y `species`.
+- `GET /trees/:id`: añade nombres disponibles, distrito/barrio, enlace/fecha de origen, `dataSource` (licencia, atribución, logo y fecha de descarga; `null` hasta la primera importación) y `species`.
+- `GET /sources`, `GET /sources/:code`: fuentes registradas; el detalle incluye `storedRecords`.
 - `GET /species`: nombres distintos y enriquecimiento disponible, o campos `NULL` si falta.
 - `GET /species/:id`: ficha completa de una especie: fila del catálogo (con perfil editorial y
   enriquecimiento resueltos por idioma, `content` ya resuelto con la precedencia editorial →
@@ -142,7 +144,8 @@ garantizar la propiedad.
 
 ## Comandos y comprobación
 
-La migración inicial es `drizzle/0000_plant_catalog.sql`, acompañada de snapshot y journal.
+La migración inicial es `drizzle/0000_plant_catalog.sql`; `0001_nifty_lady_ursula.sql` añade `species_profiles` y `0002_data_sources.sql` añade `data_sources`. Cada una con su snapshot y journal.
+`npm run import:arbolado` descarga todo el inventario por páginas (`--limit`, `--offset`) y registra licencia y hora.
 El reinicio experimental ya se completó; los cambios siguientes requieren nuevas migraciones,
 sin borrar datos ni editar la inicial aplicada. Para instalar desde cero, usa una base vacía.
 
@@ -167,7 +170,7 @@ ORDER BY table_name;
 ```
 
 Después de la migración inicial deben aparecer `plant_locations`, `plant_names`, `species`,
-`species_enrichments`, `species_profiles` (migración `0001`), `users`. El historial está en otro esquema.
+`species_enrichments`, `species_profiles` (migración `0001`), `data_sources` (migración `0002`), `users`. El historial está en otro esquema.
 
 ## Fuera de alcance ahora
 
