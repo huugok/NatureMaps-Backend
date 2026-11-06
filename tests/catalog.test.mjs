@@ -437,6 +437,59 @@ test('catalog import and HTTP API with isolated PostgreSQL', async (t) => {
         { total: 0, returned: 0, items: [] })
     })
 
+    await t.test('nearby plants return the closest ones inside the radius', async () => {
+      const before = { databaseCalls, upstreamCalls }
+      for (const path of ['/trees/nearby?lon=0', '/trees/nearby?lat=abc&lon=0', '/trees/nearby?lat=91&lon=0',
+        '/trees/nearby?lat=0&lon=-181', '/trees/nearby?lat=0&lon=0&radius=49', '/trees/nearby?lat=0&lon=0&radius=10001',
+        '/trees/nearby?lat=0&lon=0&limit=1001', '/trees/nearby?lat=0&lon=0&limit=0', '/trees/nearby?lat=0&lon=0&lang=!!!']) {
+        assert.equal((await request(path)).status, 400)
+      }
+      assert.deepEqual({ databaseCalls, upstreamCalls }, before)
+
+      // Four plants at known straight-line distances from the import fixture
+      // point: ~40 m north, ~172 m east, ~890 m north and ~2004 m north.
+      await pg.query(`insert into plant_locations
+        (species_id, latitude, longitude, source, external_id, source_url)
+        values
+          (null, 39.47826, -0.3778, 'TEST', 'nearby-40', 'https://geoportal.valencia.es/nearby-40'),
+          (null, 39.4779, -0.3758, 'TEST', 'nearby-172', 'https://geoportal.valencia.es/nearby-172'),
+          (null, 39.48590, -0.3778, 'TEST', 'nearby-890', 'https://geoportal.valencia.es/nearby-890'),
+          (null, 39.49590, -0.3778, 'TEST', 'nearby-2004', 'https://geoportal.valencia.es/nearby-2004')`)
+      const nearId = (await pg.query("select id from plant_locations where external_id = 'nearby-40'")).rows[0].id
+      await pg.query(`insert into plant_names (plant_location_id, language, name) values (${nearId}, 'ca', 'Planta propera')`)
+      try {
+        const nearby = (await request('/trees/nearby?lat=39.4779&lon=-0.3778&radius=1000&limit=100')).body
+        assert.deepEqual(nearby.center, { latitude: 39.4779, longitude: -0.3778 })
+        assert.equal(nearby.radius, 1000)
+        // Earlier subtests already imported plants at the base point, so assert
+        // on the inserted fixtures instead of the absolute count.
+        const externals = nearby.trees.map((tree) => tree.externalId)
+        const mine = ['nearby-40', 'nearby-172', 'nearby-890']
+        for (const external of mine) assert.ok(externals.includes(external), `${external} should be inside the radius`)
+        assert.ok(externals.indexOf('nearby-40') < externals.indexOf('nearby-172'))
+        assert.ok(externals.indexOf('nearby-172') < externals.indexOf('nearby-890'))
+        assert.ok(!externals.includes('nearby-2004'))
+        for (const tree of nearby.trees) assert.ok(tree.distance <= 1000)
+        // Common names resolve for the requested language with the shared fallbacks.
+        const propera = nearby.trees.find((tree) => tree.externalId === 'nearby-40')
+        assert.equal(propera.commonName, 'Planta propera')
+        assert.equal(propera.commonNameLanguage, 'ca')
+        assert.equal(propera.displayName, 'Planta propera')
+
+        const limited = (await request('/trees/nearby?lat=39.4779&lon=-0.3778&radius=1000&limit=2')).body
+        assert.equal(limited.returned, 2)
+        assert.ok(limited.trees[0].distance <= limited.trees[1].distance)
+
+        // The raised caps admit the map's wide-mode queries (10x the default).
+        for (const path of ['/trees/nearby?lat=39.4779&lon=-0.3778&radius=10000&limit=1000',
+          '/trees/nearby?lat=39.4779&lon=-0.3778&radius=50&limit=1']) {
+          assert.equal((await request(path)).status, 200)
+        }
+      } finally {
+        await pg.query("delete from plant_locations where source = 'TEST'")
+      }
+    })
+
     const downloadedAt = async () => new Date((await pg.query(
       "select last_downloaded_at from data_sources where code = 'VALENCIA_ARBOLADO'")).rows[0].last_downloaded_at).getTime()
 
