@@ -29,6 +29,7 @@ type AreaRow = {
   externalId: string
   sourceUrl: string
   geometry?: unknown
+  plants?: number
 }
 
 const FIELDS = sql`g.id, g.group_slug as "groupSlug", g.name, g.typology, g.neighborhood,
@@ -54,6 +55,7 @@ function publicArea(row: AreaRow, withGeometry: boolean) {
     center: { latitude: Number(row.latitude), longitude: Number(row.longitude) },
     // [oeste, sur, este, norte], el orden de GeoJSON y de Leaflet.fitBounds.
     bbox: [Number(row.minLongitude), Number(row.minLatitude), Number(row.maxLongitude), Number(row.maxLatitude)],
+    ...(row.plants === undefined ? {} : { plants: Number(row.plants) }),
     ...(withGeometry ? { geometry: geometryOf(row) } : {}),
   }
 }
@@ -74,7 +76,8 @@ export async function listGreenAreas(all: boolean, withGeometry: boolean, bounds
   }
   const [result, withArticles, dataSources] = await Promise.all([
     db.execute<AreaRow>(sql`
-      select ${FIELDS} ${withGeometry ? sql`, g.geometry` : sql``}
+      select ${FIELDS} ${withGeometry ? sql`, g.geometry` : sql``},
+        (select count(*)::int from plant_locations p where p.green_area_id = g.id) as plants
       from green_areas g where ${sql.join(conditions, sql` and `)}
       order by g.area_m2 desc nulls last, g.id
     `),

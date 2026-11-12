@@ -111,6 +111,15 @@ test('zonas verdes y contenido editorial (NM-08)', async (t) => {
       assert.ok(source.attribution.includes('Ajuntament de València'))
     })
 
+    await t.test('cada planta dice en qué zona verde está (para agrupar en el mapa)', async () => {
+      const list = await request('/trees?limit=10')
+      const inside = list.body.trees.find((tree) => tree.id === naranjo1.plant)
+      assert.equal(inside.greenAreaId, await idOf('99120311'))
+      assert.equal(list.body.trees.find((tree) => tree.id === enCalle.plant).greenAreaId, null)
+      const nearby = await request('/trees/nearby?lat=39.4765&lon=-0.3865&radius=500')
+      assert.equal(nearby.body.trees[0].greenAreaId, await idOf('99120311'))
+    })
+
     await t.test('asigna cada ejemplar a la zona que lo contiene', async () => {
       assert.equal(await areaOf(naranjo1.plant), await idOf('99120311'))
       assert.equal(await areaOf(jacaranda.plant), await idOf('99120311'))
@@ -134,6 +143,9 @@ test('zonas verdes y contenido editorial (NM-08)', async (t) => {
       assert.equal(layer.body.returned, 4)
       assert.ok(layer.body.areas.every((item) => item.featured))
       const hesperides = layer.body.areas.find((item) => item.groupSlug === 'jardin-de-las-hesperides')
+      // El recuento de ejemplares va en la capa: con él el mapa agrupa los
+      // pines por parque sin pedir la ficha de cada zona.
+      assert.equal(hesperides.plants, 3)
       assert.equal(hesperides.geometry.type, 'Polygon')
       assert.deepEqual(hesperides.bbox, [-0.387, 39.476, -0.386, 39.477])
       assert.ok(Math.abs(hesperides.center.latitude - 39.4765) < 1e-6)
