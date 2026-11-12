@@ -6,14 +6,19 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
+    "test": "npm run test:catalog && npm run test:pois && npm run test:profiles",
     "test:catalog": "tsx --test tests/catalog.test.mjs",
     "import:arbolado": "tsx src/scripts/import-inventory.ts",
+    "import:pois": "tsx src/scripts/import-pois.ts",
     "start": "node dist/index.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/db/seedProfiles.ts",
+    "db:seed:pois": "tsx src/db/seedPoiProfiles.ts",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "test:pois": "tsx --test tests/pois.test.mjs",
+    "test:profiles": "tsx --test tests/poi-profiles.test.mjs"
   },
   "repository": {
     "type": "git",

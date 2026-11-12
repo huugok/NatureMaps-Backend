@@ -1,41 +1,7 @@
 import type { Request, Response } from 'express'
-import { CatalogError } from '../services/catalogError.js'
+import { decimal, integer, language, sendError } from './params.js'
 import { importValenciaInventory } from '../services/inventoryImport.js'
 import { getTree, listNearbyTrees, listTrees } from '../services/treeCatalog.js'
-
-function integer(value: unknown, fallback: number, min: number, max: number, name: string): number {
-  if (value === undefined) return fallback
-  if (typeof value !== 'string' || !/^\d+$/.test(value)) throw new CatalogError(400, `${name} debe ser un entero entre ${min} y ${max}`)
-  const number = Number(value)
-  if (!Number.isSafeInteger(number) || number < min || number > max) throw new CatalogError(400, `${name} debe ser un entero entre ${min} y ${max}`)
-  return number
-}
-
-function language(value: unknown): string {
-  if (value === undefined) return 'es'
-  if (typeof value !== 'string' || value.length > 35) throw new CatalogError(400, 'lang no es válido')
-  try {
-    const canonical = Intl.getCanonicalLocales(value)[0]
-    if (!canonical) throw new Error('Missing language')
-    return canonical
-  } catch { throw new CatalogError(400, 'lang no es válido') }
-}
-
-function decimal(value: unknown, name: string, min: number, max: number): number {
-  if (typeof value !== 'string' || !/^-?\d+(\.\d+)?$/.test(value)) throw new CatalogError(400, `${name} debe ser un número entre ${min} y ${max}`)
-  const number = Number(value)
-  if (!Number.isFinite(number) || number < min || number > max) throw new CatalogError(400, `${name} debe ser un número entre ${min} y ${max}`)
-  return number
-}
-
-function sendError(res: Response, error: unknown) {
-  if (error instanceof CatalogError) {
-    res.status(error.status).json({ error: error.message })
-  } else {
-    // Do not expose driver errors, SQL parameters or connection strings.
-    res.status(500).json({ error: 'No se pudo consultar o guardar el catálogo' })
-  }
-}
 
 export async function importTrees(req: Request, res: Response) {
   try {

@@ -1,9 +1,8 @@
 import assert from 'node:assert/strict'
 import { once } from 'node:events'
-import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { neonConfig } from '@neondatabase/serverless'
-import { PGlite } from '@electric-sql/pglite'
+import { startFixtureDatabase } from './support/pglite.mjs'
 
 function feature(id, scientificName = 'Citrus aurantium', commonName = 'Naranjo amargo') {
   return {
@@ -14,33 +13,9 @@ function feature(id, scientificName = 'Citrus aurantium', commonName = 'Naranjo 
   }
 }
 
-// Emulate Neon's HTTP wire format while executing the actual SQL in PostgreSQL/WASM.
-function wireResult(result, query) {
-  const fields = result.fields.map((field) => ({ ...field, format: 'text' }))
-  return {
-    fields,
-    rows: result.rows.map((row) => fields.map(({ name, dataTypeID }) => {
-      const value = row[name]
-      if (value === null || value === undefined) return null
-      if (dataTypeID === 114 || dataTypeID === 3802) return JSON.stringify(value)
-      if (typeof value === 'boolean') return value ? 't' : 'f'
-      if (value instanceof Date) return value.toISOString()
-      return String(value)
-    })),
-    rowCount: result.affectedRows ?? result.rows.length,
-    command: query.trim().split(/\s+/)[0].toUpperCase(),
-    rowAsArray: true,
-  }
-}
-
 test('catalog import and HTTP API with isolated PostgreSQL', async (t) => {
-  const pg = new PGlite()
-  const journal = JSON.parse(await readFile(new URL('../drizzle/meta/_journal.json', import.meta.url), 'utf8'))
-  for (const entry of journal.entries) await pg.exec(await readFile(new URL(`../drizzle/${entry.tag}.sql`, import.meta.url), 'utf8'))
+  const { pg, restore } = await startFixtureDatabase()
   const originalFetch = globalThis.fetch
-  const originalNeonFetch = neonConfig.fetchFunction
-  const originalDatabaseUrl = process.env.DATABASE_URL
-  process.env.DATABASE_URL = 'postgresql://test:test@ep-test.eu-central-1.aws.neon.tech/test'
   let fixtures = [feature('10050/1'), feature('10050/2'), feature('cultivar', 'Morus sp.', 'Morera')]
   fixtures.push({ ...feature('bad-coordinates'), geometry: { type: 'Point', coordinates: [0, 91] } })
   let upstreamFailure = false
@@ -50,25 +25,12 @@ test('catalog import and HTTP API with isolated PostgreSQL', async (t) => {
   let failMorus = true
   let missingEnglishMorus = false
   const wikipediaSummaries = []
-  neonConfig.fetchFunction = async (_url, init) => {
+  // El arnés instala el driver; envolvemos su función para contar consultas y
+  // seguir comprobando que la validación no llega a la base de datos.
+  const fixtureFetch = neonConfig.fetchFunction
+  neonConfig.fetchFunction = async (input, init) => {
     databaseCalls++
-    const body = JSON.parse(init.body)
-    async function execute(client, query) {
-      return wireResult(await client.query(query.query, query.params), query.query)
-    }
-    try {
-      if (body.queries) {
-        const results = await pg.transaction(async (tx) => {
-          const rows = []
-          for (const query of body.queries) rows.push(await execute(tx, query))
-          return rows
-        })
-        return Response.json({ results })
-      }
-      return Response.json(await execute(pg, body))
-    } catch (error) {
-      return Response.json({ message: 'Fixture database error', code: error.code }, { status: 400 })
-    }
+    return fixtureFetch(input, init)
   }
   globalThis.fetch = async (input, init) => {
     const url = new URL(String(input))
@@ -573,9 +535,7 @@ test('catalog import and HTTP API with isolated PostgreSQL', async (t) => {
   } finally {
     if (server) await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))
     globalThis.fetch = originalFetch
-    neonConfig.fetchFunction = originalNeonFetch
-    if (originalDatabaseUrl === undefined) delete process.env.DATABASE_URL
-    else process.env.DATABASE_URL = originalDatabaseUrl
+    restore()
     await pg.close()
   }
 })

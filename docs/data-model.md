@@ -15,6 +15,8 @@ integración Pl@ntNet de `main`. Las fuentes futuras son contexto, no funcionali
 | `plant_names` | Nombre común de un ejemplar y su idioma (`es`, `ca`, etc.). |
 | `species_enrichments` | Descripción breve y extracto Wikipedia por especie/idioma, URL del artículo, Wikidata ID, fecha y foto opcional con créditos. |
 | `species_profiles` | Ficha editorial curada por especie/idioma: descripción, familia, floración, curiosidad y fuentes (`jsonb`). Texto verificado por el equipo; la foto sigue viniendo de `species_enrichments`. |
+| `pois` | POIs histórico-culturales del mapa (NM-06): nombre oficial, categoría (`monumento`, `recurso-turistico`), coordenadas, fuente y enlace al registro; descripción e imagen con sus créditos cuando están curadas. |
+| `poi_profiles` | Texto de la ficha del POI por idioma (extracto de Wikipedia con licencia, hasta que NM-09 traiga contenido propio). |
 | `data_sources` | Una fila por fuente (`code` = `source` de `species`/`plant_locations`, sin FK): organismo, nombre, URL, licencia y su URL, atribución, logo opcional y `last_downloaded_at`. Se crea/actualiza en la misma transacción que cada importación. |
 
 `users` es la séptima tabla, conservada del scaffold. No se añaden tablas de observaciones que
@@ -144,7 +146,7 @@ garantizar la propiedad.
 
 ## Comandos y comprobación
 
-La migración inicial es `drizzle/0000_plant_catalog.sql`; `0001_nifty_lady_ursula.sql` añade `species_profiles` y `0002_data_sources.sql` añade `data_sources`. Cada una con su snapshot y journal.
+La migración inicial es `drizzle/0000_plant_catalog.sql`; `0001_nifty_lady_ursula.sql` añade `species_profiles`, `0002_data_sources.sql` añade `data_sources` y `0003_gigantic_tinkerer.sql` añade `pois` y `poi_profiles`. Cada una con su snapshot y journal.
 `npm run import:arbolado` descarga todo el inventario por páginas (`--limit`, `--offset`) y registra licencia y hora.
 El reinicio experimental ya se completó; los cambios siguientes requieren nuevas migraciones,
 sin borrar datos ni editar la inicial aplicada. Para instalar desde cero, usa una base vacía.

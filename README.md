@@ -65,7 +65,7 @@ Detén el servidor con `Ctrl+C`. Desde la raíz:
 
 ```powershell
 npm.cmd run build
-npm.cmd run test:catalog
+npm.cmd test
 npm.cmd run db:migrate
 npm.cmd run dev
 ```
@@ -91,6 +91,9 @@ Invoke-RestMethod "http://localhost:3000/species?lang=es"
 | `GET /trees?limit=20&offset=0&lang=es` | Lista ligera para el mapa: nombres, especie, coordenadas e IDs. |
 | `GET /trees/nearby?lat=39.4779&lon=-0.3778&radius=1000&limit=100&lang=es` | Plantas más cercanas a un punto (línea recta, `distance` en metros), ordenadas por distancia. `radius` 50–10000 (default 1000), `limit` 1–1000 (default 100). |
 | `GET /trees/:id?lang=ca` | Ficha con nombres disponibles, procedencia, `dataSource` (organismo, licencia, atribución, logo, fecha de descarga) y especie enriquecida. |
+| `GET /pois/nearby?lat=39.4742&lon=-0.3785&radius=1500&limit=300&lang=es` | POIs histórico-culturales cercanos (NM-06): ficha completa de cada punto (nombre, categoría, descripción curada, imagen con créditos, ubicación y fuente) más el mapa de fuentes. `detail=lite` devuelve solo lo que pinta el mapa (`summary` de 200 caracteres, `hasProfile`, `imageUrl`); por defecto `full`. |
+| `GET /pois/:id` | Un POI con su `dataSource` (licencia y atribución). |
+| `POST /pois/import` | Importa las capas de monumentos y recursos turísticos del geoportal municipal (idempotente). |
 | `GET /sources` | Fuentes de datos registradas con licencia, atribución, logo y fecha de última descarga. |
 | `GET /sources/:code` | Una fuente (p. ej. `VALENCIA_ARBOLADO`) con `storedRecords`. |
 | `POST /species/enrich?limit=20` | Wikipedia para especies pendientes; admite `lang=es`/`lang=en` y `afterId`. Sin `lang`, conserva el fallback es → en. |
@@ -129,20 +132,32 @@ es `null`; un fallo de imagen no descarta el texto.
 Pl@ntNet y la página `/probar` se conservan. El reconocimiento todavía no se guarda como
 observación. Consulta [la guía de identificación](docs/identificacion-plantas.md).
 
+La ficha de los POIs se llena con `npm run db:seed:pois` a partir de una lista de títulos de Wikipedia
+elegidos a mano. El criterio de qué se cura, cómo se elige el título y qué está prohibido (emparejar
+por parecido) está en [la guía de curaduría](docs/poi-curaduria.md).
+
 ## Desarrollo y comandos
 
 ```powershell
 npm.cmd run dev
 npm.cmd run build
+npm.cmd test
 npm.cmd run test:catalog
+npm.cmd run test:pois
+npm.cmd run test:profiles
 ```
 
 El build comprueba TypeScript y compila a `dist/`. Las pruebas ejecutan todas las migraciones,
 SQL y HTTP con PGlite y servicios ficticios; no cargan `.env`, no usan Neon ni prueban disponibilidad
-de APIs externas. No hay linter ni comando `npm test`.
+de APIs externas. No hay linter: la verificación es `npm test`, que ejecuta todas las suites.
 
 | Comando | Efecto |
 |---|---|
+| `npm.cmd test` | Todas las suites (catálogo + POIs + perfiles). |
+| `npm.cmd run test:catalog` | Solo la suite del catálogo. |
+| `npm.cmd run test:pois` | Solo la suite de POIs. |
+| `npm.cmd run test:profiles` | Solo el informe de curaduría (`--dry-run`). |
+| `npm.cmd run db:seed:pois -- --dry-run` | Revisa nombres e idiomas de `CURATED_POIS` sin red ni escritura; sale con 1 si alguno no empareja. |
 | `node docs/check-db.mjs` | SELECT de conexión, sin cambios. |
 | `npm.cmd run db:generate -- --name=nombre_del_cambio` | Genera SQL y snapshot locales desde el esquema; no modifica Neon. |
 | `npm.cmd run db:migrate` | Aplica SQL pendiente a la base configurada. |

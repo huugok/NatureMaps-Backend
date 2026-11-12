@@ -65,7 +65,10 @@ base ni de las migraciones intermedias descartadas. La documentación vigente es
 npm install
 npm run dev            # tsx watch src/index.ts
 npm run build          # tsc -> dist/
+npm test               # todas las suites (catálogo + POIs + perfiles)
 npm run test:catalog   # Node Test Runner + tsx + PGlite; sin .env ni servicios externos
+npm run test:pois      # suite de POIs (mismo harness PGlite)
+npm run test:profiles  # informe de curaduría (formato del `--dry-run`, sin base)
 npm start              # node dist/index.js
 
 npm run db:generate    # migraciones SQL desde src/db/schema.ts -> drizzle/
@@ -79,9 +82,10 @@ node docs/check-db.mjs # SELECT de conexión; sin cambios en datos
 
 En PowerShell, si la política bloquea `npm.ps1`, usar `npm.cmd` con los mismos argumentos.
 
-No hay linter ni comando `npm test`. Para cambios del catálogo ejecutar `npm run build` y
-`npm run test:catalog`. La suite ejecuta la migración y el SQL real sobre PGlite, y prueba HTTP con
-un upstream ficticio; no demuestra disponibilidad de Neon ni del ArcGIS público.
+No hay linter. Para cambios del catálogo o de POIs ejecutar `npm run build` y `npm test`
+(o una sola suite con `npm run test:catalog` / `npm run test:pois` / `npm run test:profiles`). Las suites ejecutan la migración
+y el SQL real sobre PGlite, y prueban HTTP con un upstream ficticio; no demuestran disponibilidad de
+Neon ni de las APIs públicas.
 
 ## Variables de entorno
 
@@ -198,6 +202,7 @@ incrementales; esta decisión puntual no autoriza nuevos resets.
   (idempotente). Devuelve `{ fetched, stored }`.
 - `GET /trees?limit=200` — `{ total, returned, limit, trees }`.
 - `GET /trees/nearby?lat=…&lon=…&radius=1000&limit=100&lang=es` — plantas más cercanas a un punto (línea recta, `distance` en metros), ordenadas por distancia; `radius` 50–10000, `limit` 1–1000. 400 si `lat`/`lon` faltan o no son numéricos.
+- `GET /pois/nearby` y `GET /pois/:id` (NM-06) — POIs histórico-culturales con la ficha completa (nombre, categoría, descripción curada, imagen con créditos, ubicación y fuente). Se importan con `npm run import:pois` del geoportal municipal (capas `Turismo/202` monumentos y `Turismo/226` recursos) y el contenido se siembra con `npm run db:seed:pois` desde títulos de Wikipedia elegidos a mano en `src/services/poiProfiles.ts` (nunca por parecido de nombre). Las capas BIC/BRL (polígonos, varias geometrías por bien) quedan fuera de esta UT.
 - `GET /sources`, `GET /sources/:code` — fuentes con licencia, atribución, logo y fecha de descarga.
 - `GET /trees/:id` — árbol + su `dataSource` (o `null` hasta la primera importación) + su `species` (o `null`); 400 si el id no es numérico, 404 si no existe.
 - `POST /species/enrich` — enriquece especies distintas de `trees` que aún no estén guardadas.
