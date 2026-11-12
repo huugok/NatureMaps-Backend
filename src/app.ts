@@ -5,6 +5,7 @@ import { treesRouter } from './routes/trees.js'
 import { speciesRouter } from './routes/species.js'
 import { sourcesRouter } from './routes/sources.js'
 import { poisRouter } from './routes/pois.js'
+import { routesRouter } from './routes/routes.js'
 
 export const app = express()
 
@@ -15,6 +16,7 @@ app.use('/trees', treesRouter)
 app.use('/species', speciesRouter)
 app.use('/sources', sourcesRouter)
 app.use('/pois', poisRouter)
+app.use('/routes', routesRouter)
 
 // Página de prueba para identificar plantas desde el navegador.
 app.get('/probar', (_req, res) => {
