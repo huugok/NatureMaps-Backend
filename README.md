@@ -28,7 +28,8 @@ npm.cmd install
 ```
 
 Copia `.env.example` a `.env` y completa `DATABASE_URL` localmente desde **Connect** de Neon.
-`PORT` es opcional (3000 por defecto). No publiques `.env`.
+`PORT` es opcional (3000 por defecto). `VALHALLA_URL` (motor de rutas para generar el catálogo;
+demo FOSSGIS por defecto) solo la usa `db:seed:routes`, no la API en marcha. No publiques `.env`.
 En PowerShell usa `npm.cmd` si la política bloquea `npm.ps1`.
 
 ## Comprobar la conexión
@@ -94,6 +95,8 @@ Invoke-RestMethod "http://localhost:3000/species?lang=es"
 | `GET /pois/nearby?lat=39.4742&lon=-0.3785&radius=1500&limit=300&lang=es` | POIs histórico-culturales cercanos (NM-06): ficha completa de cada punto (nombre, categoría, descripción curada, imagen con créditos, ubicación y fuente) más el mapa de fuentes. `detail=lite` devuelve solo lo que pinta el mapa (`summary` de 200 caracteres, `hasProfile`, `imageUrl`); por defecto `full`. |
 | `GET /pois/:id` | Un POI con su `dataSource` (licencia y atribución). |
 | `POST /pois/import` | Importa las capas de monumentos y recursos turísticos del geoportal municipal (idempotente). |
+| `GET /routes` | Catálogo de rutas botánico-culturales predefinidas: listado ligero (sin la geometría) con nombre, tema (`botanica`/`cultural`/`mixta`), forma (`circular`/`lineal`), categoría de longitud (`corta`/`media`/`larga`), distancia, duración, punto de inicio, descripción y nº de paradas. |
+| `GET /routes/:id` | Ficha completa de la ruta: añade las paradas en orden (`kind`, nombre, coordenadas) y la geometría del recorrido (`path`), calculada una vez con Valhalla y guardada en BD. 400 si el id no es numérico, 404 si no existe. |
 | `GET /sources` | Fuentes de datos registradas con licencia, atribución, logo y fecha de última descarga. |
 | `GET /sources/:code` | Una fuente (p. ej. `VALENCIA_ARBOLADO`) con `storedRecords`. |
 | `POST /species/enrich?limit=20` | Wikipedia para especies pendientes; admite `lang=es`/`lang=en` y `afterId`. Sin `lang`, conserva el fallback es → en. |
@@ -136,6 +139,12 @@ La ficha de los POIs se llena con `npm run db:seed:pois` a partir de una lista d
 elegidos a mano. El criterio de qué se cura, cómo se elige el título y qué está prohibido (emparejar
 por parecido) está en [la guía de curaduría](docs/poi-curaduria.md).
 
+El catálogo de rutas se genera con `npm run db:seed:routes`: nueve rutas predefinidas (tres por
+longitud, una de cada contenido) que `generateRoute()` calcula una vez con Valhalla y guarda tal
+cual en la tabla `routes` (la API nunca llama al motor de rutas en vivo). Necesita `DATABASE_URL` y
+`VALHALLA_URL` (servidor demo FOSSGIS o despliegue Docker propio). Es idempotente: repetirla
+regenera y actualiza cada ruta por nombre, útil tras ajustar el generador.
+
 ## Desarrollo y comandos
 
 ```powershell
@@ -145,6 +154,7 @@ npm.cmd test
 npm.cmd run test:catalog
 npm.cmd run test:pois
 npm.cmd run test:profiles
+npm.cmd run test:routes
 ```
 
 El build comprueba TypeScript y compila a `dist/`. Las pruebas ejecutan todas las migraciones,
@@ -153,10 +163,12 @@ de APIs externas. No hay linter: la verificación es `npm test`, que ejecuta tod
 
 | Comando | Efecto |
 |---|---|
-| `npm.cmd test` | Todas las suites (catálogo + POIs + perfiles). |
+| `npm.cmd test` | Todas las suites (catálogo + POIs + perfiles + rutas). |
 | `npm.cmd run test:catalog` | Solo la suite del catálogo. |
 | `npm.cmd run test:pois` | Solo la suite de POIs. |
 | `npm.cmd run test:profiles` | Solo el informe de curaduría (`--dry-run`). |
+| `npm.cmd run test:routes` | Solo la suite de rutas (generador con Valhalla simulado + catálogo). |
+| `npm.cmd run db:seed:routes` | Genera y guarda las 9 rutas predefinidas con Valhalla; requiere `DATABASE_URL` y `VALHALLA_URL`. Idempotente por nombre. |
 | `npm.cmd run db:seed:pois -- --dry-run` | Revisa nombres e idiomas de `CURATED_POIS` sin red ni escritura; sale con 1 si alguno no empareja. |
 | `node docs/check-db.mjs` | SELECT de conexión, sin cambios. |
 | `npm.cmd run db:generate -- --name=nombre_del_cambio` | Genera SQL y snapshot locales desde el esquema; no modifica Neon. |
