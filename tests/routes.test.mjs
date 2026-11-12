@@ -124,69 +124,30 @@ test('Rutas predefinidas: generador, cliente Valhalla y catálogo', async (t) =>
       assert.ok(Math.abs(route.path[0].latitude - route.path[route.path.length - 1].latitude) < 1e-5)
     })
 
-    await t.test('evita el rodeo de ida y vuelta forzando el paso por fuera', async () => {
+    await t.test('las paradas van pegadas al anillo, para que la traza sea circular', async () => {
       await clearStops()
-      // Anillo de 8 plantas a 245 m del inicio.
+      // Anillo de 8 plantas a 245 m del inicio (el radio del anillo para 2 km).
       for (let k = 0; k < 8; k++) {
         const angle = (Math.PI * 2 * k) / 8
         await insertPlant(245 * Math.sin(angle) / 110_540, 245 * Math.cos(angle) / 111_320, `Planta ${k}`)
       }
 
-      const previousFetch = globalThis.fetch
-      let repairs = 0
-      // El simulador responde como el motor de verdad: el tramo que sale del
-      // inicio va y vuelve por la misma calle; si se le pide con un punto
-      // intermedio (el rodeo por fuera), devuelve un tramo limpio.
-      globalThis.fetch = async (input, init) => {
-        const body = JSON.parse(init.body)
-        // Con dos localizaciones es un tramo; con tres, el rodeo por fuera
-        // (origen → punto intermedio → destino).
-        const origin = body.locations[0]
-        const via = body.locations.length === 3 ? body.locations[1] : undefined
-        const destination = body.locations.length === 3 ? body.locations[2] : body.locations[1]
-        const distance = haversineMeters(origin, destination) * DETOUR
-        const time = distance / 1.4
-        if (via) {
-          repairs++
-          const shape = encodePolyline([
-            { latitude: origin.lat, longitude: origin.lon },
-            { latitude: via.lat, longitude: via.lon },
-          ])
-          return Response.json({ trip: { status: 0, summary: { length: distance / 1000, time },
-            legs: [
-              { shape, summary: { length: distance / 2000, time: time / 2 } },
-              { shape: encodePolyline([
-                { latitude: via.lat, longitude: via.lon },
-                { latitude: destination.lat, longitude: destination.lon },
-              ]), summary: { length: distance / 2000, time: time / 2 } },
-            ] } })
-        }
-        const isHairpin = origin.lat === 0 && origin.lon === 0
-        const shape = isHairpin
-          ? // Ida y vuelta: sube 500 m y vuelve a pasar por el inicio.
-            encodePolyline([
-              { latitude: origin.lat, longitude: origin.lon },
-              { latitude: 0.0045, longitude: 0 },
-              { latitude: 0.0001, longitude: 0 },
-              { latitude: destination.lat, longitude: destination.lon },
-            ])
-          : encodePolyline([
-            { latitude: origin.lat, longitude: origin.lon },
-            { latitude: destination.lat, longitude: destination.lon },
-          ])
-        return Response.json({ trip: { status: 0, summary: { length: distance / 1000, time },
-          legs: [{ shape, summary: { length: distance / 1000, time } }] } })
+      const route = await generateRoute({ start: { latitude: 0, longitude: 0 }, targetDistance: 2000, content: 'botanica' })
+      const radiusOf = (point) => Math.hypot(point.latitude * 110_540, point.longitude * 111_320)
+      // Las paradas se quedan en la banda del anillo (75 %–125 % del radio):
+      // si se dispersan, los tramos cortan por dentro y la traza no es un
+      // círculo.
+      assert.ok(route.stops.length >= 3, `paradas: ${route.stops.length}`)
+      for (const stop of route.stops) {
+        const radius = radiusOf(stop)
+        assert.ok(radius >= 245 * 0.7 && radius <= 245 * 1.3, `parada a ${Math.round(radius)} m del inicio`)
       }
-
-      try {
-        const route = await generateRoute({ start: { latitude: 0, longitude: 0 }, targetDistance: 2000, content: 'botanica' })
-        assert.ok(repairs > 0, 'se intentó rodear el tramo por fuera')
-        // El punto al que subía y bajaba la calle no está en el recorrido final.
-        const spike = route.path.find((point) => Math.abs(point.latitude - 0.0045) < 1e-6)
-        assert.equal(spike, undefined, 'el rodeo de ida y vuelta no está en la ruta')
-      } finally {
-        globalThis.fetch = previousFetch
-      }
+      // La traza (entre paradas) se mantiene en la banda del anillo.
+      const onBand = route.path.filter((point) => {
+        const radius = radiusOf(point)
+        return radius >= 245 * 0.7 && radius <= 245 * 1.3
+      }).length
+      assert.ok(onBand >= route.path.length / 2, `trazado por el anillo: ${onBand}/${route.path.length}`)
     })
 
     await t.test('cae a una ruta lineal con la longitud objetivo cuando no hay anillo', async () => {

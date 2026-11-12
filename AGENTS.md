@@ -158,9 +158,10 @@ al motor de rutas en vivo. El generador vive en `src/services/routeGenerator.ts`
 método reutilizable; la seed solo trae las 9 definiciones) y devuelve rutas circulares (anillo de
 paradas repartidas) o lineales (si la zona no da para cerrar el anillo, siempre con la longitud
 objetivo de su categoría). Valhalla se consulta por pares consecutivos de puntos (2 locations por
-petición) para no depender del límite de waypoints; un tramo que hace ida y vuelta por la misma
-calle se vuelve a pedir con un punto intermedio por fuera del anillo (3 locations), y solo se
-acepta si el rodeo baja y la longitud no se dispara.
+petición) para no depender del límite de waypoints. Para que la traza sea circular, las paradas se
+pegan al anillo (banda del 60 %–140 % del radio, una parada cada ~350 m) y los tramos se piden
+directos entre paradas, para que el camino siga las calles de verdad; si un tramo hace ida y vuelta
+por la misma calle, esa parada se aparta y el intento se repite.
 Consultar `docs/data-model.md` antes de cambiar importación o lectura. `users` se conserva.
 El usuario redujo expresamente el alcance a plantas, Wikipedia y la integración Pl@ntNet existente.
 No recrear logs, payloads completos ni infraestructura genérica para proveedores futuros.

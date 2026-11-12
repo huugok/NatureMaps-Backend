@@ -3,7 +3,7 @@ import { db } from '../db/index.js'
 import type { RoutePoint, RouteStop, RouteStopKind } from '../db/schema.js'
 import { CatalogError } from './catalogError.js'
 import { valhallaRoute } from './valhalla.js'
-import type { ValhallaLeg, ValhallaPoint } from './valhalla.js'
+import type { ValhallaPoint } from './valhalla.js'
 
 // Generador de rutas botánico-culturales (método reutilizable). Dado un punto de
 // partida, una longitud objetivo y el contenido de las paradas, busca paradas
@@ -34,8 +34,10 @@ export interface GeneratedRoute {
   path: RoutePoint[]
 }
 
-// Metros de recorrido por parada: una ruta de 5 km lleva ~10 paradas.
-const METERS_PER_STOP = 500
+// Metros de recorrido por parada: una ruta de 5 km lleva ~20 paradas. Paradas
+// densas hacen que los tramos sean cortos y la traza siga las calles del anillo
+// en vez de cortar en diagonal.
+const METERS_PER_STOP = 350
 // Factor de desvío a pie: el camino real por calles es ~30 % más largo que la
 // línea recta entre puntos; con él se traduce la longitud objetivo en radios.
 const WALKING_DETOUR = 1.3
@@ -51,8 +53,6 @@ type Plane = { x: number, y: number }
 // estos otros metros.
 const OUT_AND_BACK_NEAR_METERS = 25
 const OUT_AND_BACK_PATH_METERS = 150
-// Cuánto puede alargarse un tramo para que valga la pena rodearlo por fuera.
-const LEG_REPAIR_MAX_OVERHEAD = 1.12
 
 // Proyección local equirectangular a metros alrededor del origen: para elegir
 // paradas (ángulos, radios, corredores) da exactitud de sobra y evita SQL.
@@ -101,52 +101,11 @@ function outAndBackScore(points: RoutePoint[]): number {
   return worst
 }
 
-/** Puntos «fuera del anillo» entre dos paradas: en el ángulo intermedio (y sus
- * dos vecinos) a un 15 % o un 45 % más lejos del centro. Forzar el paso por
- * ahí hace que la ruta rodee los puntos por fuera en vez de cortar por dentro. */
-function outwardWaypoints(
-  origin: ValhallaPoint,
-  destination: ValhallaPoint,
-  ring: { center: ValhallaPoint, radius: number },
-): ValhallaPoint[] {
-  const originPlane = project(ring.center, origin)
-  const destinationPlane = project(ring.center, destination)
-  const originAngle = angleOf(originPlane)
-  const destinationAngle = angleOf(destinationPlane)
-  const middle = originAngle + angleDiff(originAngle, destinationAngle) / 2
-  const radius = Math.max(
-    ring.radius,
-    Math.hypot(originPlane.x, originPlane.y),
-    Math.hypot(destinationPlane.x, destinationPlane.y),
-  )
-  const cosLatitude = Math.max(Math.cos((ring.center.latitude * Math.PI) / 180), 0.01)
-  const points: ValhallaPoint[] = []
-  for (const factor of [1.15, 1.45]) {
-    for (const offset of [0, 20, -20]) {
-      const radians = ((middle + offset) * Math.PI) / 180
-      points.push({
-        latitude: ring.center.latitude + (radius * factor * Math.sin(radians)) / 110_540,
-        longitude: ring.center.longitude + (radius * factor * Math.cos(radians)) / (111_320 * cosLatitude),
-      })
-    }
-  }
-  return points
-}
+/** Puntos del círculo por los que debe pasar un tramo entre dos paradas: el
+ * punto medio del arco y sus dos vecinos. Forzar el paso por ahí hace que la
+ * traza siga el anillo en vez de cortar por dentro. Si una de las paradas es
+ * el centro (el punto de partida), el tramo es un radio y se deja como está. */
 
-/** Une los tramos de una ruta con waypoints intermedios en uno solo. */
-function mergeLegs(legs: ValhallaLeg[]): { distanceMeters: number, durationSeconds: number, points: RoutePoint[] } | null {
-  if (!legs.length) return null
-  const points: RoutePoint[] = []
-  let distanceMeters = 0
-  let durationSeconds = 0
-  for (const leg of legs) {
-    distanceMeters += leg.distanceMeters
-    durationSeconds += leg.durationSeconds
-    for (const point of leg.points) points.push(point)
-  }
-  if (points.length < 2) return null
-  return { distanceMeters, durationSeconds, points }
-}
 
 /** Paradas candidatas del catálogo (plantas del inventario y/o POIs), con su
  * distancia al inicio en metros. Un límite generoso por tabla: sobra con las
@@ -221,6 +180,12 @@ function pickNearest(pool: Candidate[], used: Set<Candidate>, scoreOf: (candidat
   return best?.candidate
 }
 
+/** Descarta las paradas apartadas en un intento anterior. */
+function withoutExcluded(candidates: Candidate[], excluded: Set<number>): Candidate[] {
+  if (!excluded.size) return candidates
+  return candidates.filter((candidate) => !excluded.has(candidate.id))
+}
+
 /** Penalización por dejar el anillo cóncavo: si la parada elegida entre la
  * anterior y el hueco siguiente da un giro al revés (el anillo se «corta por
  * dentro»), se le resta calidad. Así el recorrido rodea los puntos por fuera. */
@@ -248,11 +213,11 @@ function concavityPenalty(
  * del anillo. El tipo de cada hueco viene de `slotKind` (la mixta alterna por
  * construcción); si ese tipo no tiene candidata cerca del ideal, el hueco se
  * cubre con lo que haya, para que el anillo no quede con agujeros. */
-function pickRing(candidates: Candidate[], start: { latitude: number, longitude: number }, ringRadius: number, slotCount: number, content: RouteTheme): RouteStop[] {
+function pickRing(candidates: Candidate[], start: { latitude: number, longitude: number }, ringRadius: number, slotCount: number, content: RouteTheme, excluded: Set<number>): RouteStop[] {
   const used = new Set<Candidate>()
   const pools: Record<RouteStopKind, Candidate[]> = {
-    planta: candidates.filter((candidate) => candidate.kind === 'planta'),
-    poi: candidates.filter((candidate) => candidate.kind === 'poi'),
+    planta: withoutExcluded(candidates.filter((candidate) => candidate.kind === 'planta'), excluded),
+    poi: withoutExcluded(candidates.filter((candidate) => candidate.kind === 'poi'), excluded),
   }
   const toStop = (candidate: Candidate): { stop: RouteStop, angle: number } => ({
     stop: { kind: candidate.kind, id: candidate.id, name: candidate.name,
@@ -297,8 +262,8 @@ function pickRing(candidates: Candidate[], start: { latitude: number, longitude:
  * la misma longitud objetivo: mejor en línea que no generar). Mismo reparto de
  * tipos por hueco que el anillo (`slotKind`), con fallback si un tipo no tiene
  * candidata en el corredor. */
-function pickLinear(candidates: Candidate[], start: { latitude: number, longitude: number }, targetDistance: number, content: RouteTheme): RouteStop[] {
-  const projected = candidates.map((candidate) => ({ candidate, point: project(start, candidate) }))
+function pickLinear(candidates: Candidate[], start: { latitude: number, longitude: number }, targetDistance: number, content: RouteTheme, excluded: Set<number>): RouteStop[] {
+  const projected = withoutExcluded(candidates, excluded).map((candidate) => ({ candidate, point: project(start, candidate) }))
   // Sector de 90° con más candidatas: la dirección general de la zona.
   const bins = new Array<number>(8).fill(0)
   for (const entry of projected) {
@@ -360,10 +325,16 @@ function pickLinear(candidates: Candidate[], start: { latitude: number, longitud
 /** Ruta encadenando tramos consecutivos con Valhalla (a pie): con dos puntos por
  * petición no depende del límite de waypoints del servidor. En serie, con pausa
  * entre tramos y un reintento único por tramo (el servidor demo a veces suelta
- * 429/5xx). */
-async function routeChain(waypoints: ValhallaPoint[], ring?: { center: ValhallaPoint, radius: number }): Promise<{ distanceMeters: number, durationSeconds: number, path: RoutePoint[] }> {
+ * 429/5xx).
+ *
+ * Los tramos se piden directos entre paradas: así el camino sigue las calles
+ * de verdad y la traza sale redonda si las paradas van pegadas al anillo. Se
+ * avisa de qué tramo hace «ida y vuelta» por la misma calle (el índice del
+ * peor) para poder apartar esa parada y repetir. */
+async function routeChain(waypoints: ValhallaPoint[]): Promise<{ distanceMeters: number, durationSeconds: number, path: RoutePoint[], worstLeg: number }> {
   const round = (value: number) => Math.round(value * 1e6) / 1e6
   const path: RoutePoint[] = []
+  const legScores: number[] = []
   let distanceMeters = 0
   let durationSeconds = 0
   for (let index = 0; index < waypoints.length - 1; index++) {
@@ -378,26 +349,7 @@ async function routeChain(waypoints: ValhallaPoint[], ring?: { center: ValhallaP
       leg = legs[0]
     }
     if (!leg) throw new CatalogError(502, 'El servicio de rutas devolvió un tramo vacío')
-    // Tramo con «ida y vuelta» por la misma calle: se reintenta forzando el
-    // paso por fuera del anillo (cada vez más lejos), que es lo que hace la
-    // ruta más circular. Se acepta la alternativa que más reduce el rodeo si
-    // no alarga demasiado.
-    if (ring) {
-      const originalScore = outAndBackScore(leg.points)
-      if (originalScore > 0) {
-        for (const via of outwardWaypoints(origin, destination, ring)) {
-          const around = await valhallaRoute([origin, via, destination]).catch(() => [])
-          const merged = mergeLegs(around)
-          if (!merged) continue
-          if (merged.distanceMeters > leg.distanceMeters * LEG_REPAIR_MAX_OVERHEAD) continue
-          const score = outAndBackScore(merged.points)
-          if (score < originalScore * 0.5) {
-            leg = merged
-            break
-          }
-        }
-      }
-    }
+    legScores[index] = outAndBackScore(leg.points)
     if (leg.points.length) {
       const last = path[path.length - 1]
       const first = leg.points[0]
@@ -408,10 +360,11 @@ async function routeChain(waypoints: ValhallaPoint[], ring?: { center: ValhallaP
     }
     distanceMeters += leg.distanceMeters
     durationSeconds += leg.durationSeconds
-    if (index < waypoints.length - 2) await new Promise((resolve) => setTimeout(resolve, 300))
+    if (index < waypoints.length - 2) await new Promise((resolve) => setTimeout(resolve, 150))
   }
   if (path.length < 2) throw new CatalogError(502, 'El servicio de rutas no devolvió geometría')
-  return { distanceMeters, durationSeconds, path }
+  const worstLeg = legScores.reduce((worst, score, index) => (score > 0 && (worst < 0 || score > legScores[worst]!) ? index : worst), -1)
+  return { distanceMeters, durationSeconds, path, worstLeg }
 }
 
 /** Genera una ruta: elige paradas (anillo si se puede, línea si no), las mide
@@ -433,21 +386,26 @@ export async function generateRoute(options: GenerateRouteOptions): Promise<Gene
   // 40 % de los huecos: con cultivos escasos (POIs) un mínimo alto mata el
   // anillo a radios menores y obliga al fallback lineal innecesariamente.
   const minStops = Math.max(3, Math.floor(slotCount * 0.4))
+  // Paradas apartadas por hacer «ida y vuelta»: se prueban otras en su sitio.
+  const excluded = new Set<number>()
 
   let best: GeneratedRoute | undefined
-  // Hasta cinco intentos (anillo → línea, reescalando con la medición real de
-  // Valhalla si se desvía >15 % de la longitud objetivo): se queda el intento
+  // Hasta seis intentos: el anillo se prueba con paradas pegadas al círculo,
+  // se aparta la parada que provoca un rodeo y, si la longitud se desvía, se
+  // reescala el radio con la medición real de Valhalla. Se queda el intento
   // más cercano.
   let scale = 1
-  for (let attempt = 0; attempt < 5; attempt++) {
+  for (let attempt = 0; attempt < 6; attempt++) {
     const ringRadius = baseRingRadius * scale
-    // 1) Intento de anillo: paradas en una banda alrededor del radio ideal.
+    // 1) Intento de anillo: paradas pegadas al radio del anillo (banda
+    // estrecha: si las paradas se dispersan, los tramos cortan por dentro y la
+    // traza deja de ser un círculo).
     const band = candidates.filter((candidate) => {
       const point = project(start, candidate)
       const radial = Math.hypot(point.x, point.y)
-      return radial >= ringRadius * 0.45 && radial <= ringRadius * 1.55
+      return radial >= ringRadius * 0.6 && radial <= ringRadius * 1.4
     })
-    const ringStops = band.length >= minStops ? pickRing(band, start, ringRadius, slotCount, content) : []
+    const ringStops = band.length >= minStops ? pickRing(band, start, ringRadius, slotCount, content, excluded) : []
     let shape: RouteShape
     let stops: RouteStop[]
     if (ringStops.length >= minStops) {
@@ -455,17 +413,24 @@ export async function generateRoute(options: GenerateRouteOptions): Promise<Gene
       stops = ringStops
     } else {
       shape = 'lineal'
-      stops = pickLinear(candidates, start, target * scale, content)
+      stops = pickLinear(candidates, start, target * scale, content, excluded)
     }
     const waypoints: ValhallaPoint[] = [
       { latitude: start.latitude, longitude: start.longitude },
       ...stops.map((stop) => ({ latitude: stop.latitude, longitude: stop.longitude })),
       ...(shape === 'circular' ? [{ latitude: start.latitude, longitude: start.longitude }] : []),
     ]
-    const routed = await routeChain(
-      waypoints,
-      shape === 'circular' ? { center: { latitude: start.latitude, longitude: start.longitude }, radius: ringRadius } : undefined,
-    )
+    const routed = await routeChain(waypoints)
+    // Un tramo que va y vuelve por la misma calle: se aparta la parada que lo
+    // provoca y se repite con otra en su sitio (así no se alarga la ruta).
+    if (routed.worstLeg >= 0 && excluded.size < 1) {
+      const offending = stops[Math.min(routed.worstLeg, stops.length - 1)]
+      if (offending) {
+        excluded.add(offending.id)
+        attempt--
+        continue
+      }
+    }
     const result: GeneratedRoute = { theme: content, shape, ...routed, stops }
     const deviation = Math.abs(routed.distanceMeters - target) / target
     if (best === undefined || deviation < Math.abs(best.distanceMeters - target) / target) best = result
