@@ -41,6 +41,8 @@ const METERS_PER_STOP = 500
 const WALKING_DETOUR = 1.3
 // Radios relativos que se prueban para cerrar el anillo, del más natural al más forzado.
 const RING_SCALES = [1, 1.15, 0.85, 1.3, 0.7]
+// (RING_SCALES quedó del diseño inicial: el bucle actual reescala con la
+// medición real de Valhalla, que manda sobre cualquier estimación.)
 // Radio máximo de búsqueda: el mismo tope que el contrato de /trees/nearby.
 const MAX_SEARCH_RADIUS = 10_000
 
@@ -96,7 +98,7 @@ async function fetchCandidates(
         order by array_position(array['es', 'ca', 'en'], language) limit 1
       ) n on true
       where ${bbox} and ${distance} <= ${searchRadius}::double precision
-      order by ${distance} asc limit 600`) : null,
+      order by random() limit 800`) : null,
     content !== 'botanica' ? db.execute<Candidate>(sql`
       select 'poi'::text as kind, p.id, p.name, p.latitude, p.longitude,
         round(${distance}::numeric)::int as distance
@@ -141,8 +143,7 @@ function pickNearest(pool: Candidate[], used: Set<Candidate>, scoreOf: (candidat
  * del anillo. El tipo de cada hueco viene de `slotKind` (la mixta alterna por
  * construcción); si ese tipo no tiene candidata cerca del ideal, el hueco se
  * cubre con lo que haya, para que el anillo no quede con agujeros. */
-function pickRing(candidates: Candidate[], ringRadius: number, slotCount: number, content: RouteTheme): RouteStop[] {
-  const origin = { latitude: 0, longitude: 0 }
+function pickRing(candidates: Candidate[], start: { latitude: number, longitude: number }, ringRadius: number, slotCount: number, content: RouteTheme): RouteStop[] {
   const used = new Set<Candidate>()
   const pools: Record<RouteStopKind, Candidate[]> = {
     planta: candidates.filter((candidate) => candidate.kind === 'planta'),
@@ -151,14 +152,16 @@ function pickRing(candidates: Candidate[], ringRadius: number, slotCount: number
   const toStop = (candidate: Candidate): { stop: RouteStop, angle: number } => ({
     stop: { kind: candidate.kind, id: candidate.id, name: candidate.name,
       latitude: candidate.latitude, longitude: candidate.longitude },
-    angle: angleOf(project(origin, candidate)),
+    angle: angleOf(project(start, candidate)),
   })
   const scoreOf = (candidate: Candidate, ideal: Plane) => {
-    const point = project(origin, candidate)
+    const point = project(start, candidate)
     // Puntaje: distancia al punto ideal, penalizando el desvío radial (una
     // parada cerca del ideal pero a mitad de radio no cierra el anillo).
     const radial = Math.hypot(point.x, point.y)
-    const score = Math.hypot(point.x - ideal.x, point.y - ideal.y) + Math.abs(radial - ringRadius)
+    // El desvío radial pesa el doble: una parada pegada al círculo evita
+    // zigzags hacia dentro y fuera que alargan el recorrido real.
+    const score = Math.hypot(point.x - ideal.x, point.y - ideal.y) + 2 * Math.abs(radial - ringRadius)
     return score <= ringRadius ? score : null
   }
   const placed: Array<{ stop: RouteStop, angle: number }> = []
@@ -292,15 +295,16 @@ export async function generateRoute(options: GenerateRouteOptions): Promise<Gene
   if (!candidates.length) throw new CatalogError(500, 'No hay paradas suficientes alrededor del punto de partida')
 
   const slotCount = Math.min(20, Math.max(5, Math.round(target / METERS_PER_STOP)))
-  const minStops = Math.max(3, Math.floor(slotCount * 0.5))
+  // 40 % de los huecos: con cultivos escasos (POIs) un mínimo alto mata el
+  // anillo a radios menores y obliga al fallback lineal innecesariamente.
+  const minStops = Math.max(3, Math.floor(slotCount * 0.4))
 
   let best: GeneratedRoute | undefined
-  // Hasta tres intentos (anillo → línea, escalando si la primera medición se
-  // desvía >15 % de la longitud objetivo): se queda el intento más cercano.
-  const scales: number[] = []
+  // Hasta cuatro intentos (anillo → línea, reescalando con la medición real de
+  // Valhalla si se desvía >15 % de la longitud objetivo): se queda el intento
+  // más cercano.
   let scale = 1
-  for (let attempt = 0; attempt < 3; attempt++) {
-    scales.push(scale)
+  for (let attempt = 0; attempt < 4; attempt++) {
     const ringRadius = baseRingRadius * scale
     // 1) Intento de anillo: paradas en una banda alrededor del radio ideal.
     const band = candidates.filter((candidate) => {
@@ -308,7 +312,7 @@ export async function generateRoute(options: GenerateRouteOptions): Promise<Gene
       const radial = Math.hypot(point.x, point.y)
       return radial >= ringRadius * 0.45 && radial <= ringRadius * 1.55
     })
-    const ringStops = band.length >= minStops ? pickRing(band, ringRadius, slotCount, content) : []
+    const ringStops = band.length >= minStops ? pickRing(band, start, ringRadius, slotCount, content) : []
     let shape: RouteShape
     let stops: RouteStop[]
     if (ringStops.length >= minStops) {
@@ -328,8 +332,9 @@ export async function generateRoute(options: GenerateRouteOptions): Promise<Gene
     const deviation = Math.abs(routed.distanceMeters - target) / target
     if (best === undefined || deviation < Math.abs(best.distanceMeters - target) / target) best = result
     if (deviation <= 0.15) return best
-    // La medición real manda para escalar el siguiente intento.
-    scale = Math.min(1.6, Math.max(0.6, (target * scale) / Math.max(routed.distanceMeters, 1)))
+    // La medición real manda: corrección multiplicativa sobre el último
+    // intento (distancia ∝ radio, aproximadamente, dentro del anillo vivo).
+    scale = Math.min(1.6, Math.max(0.5, (scale * target) / Math.max(routed.distanceMeters, 1)))
   }
   if (!best) throw new CatalogError(502, 'No se pudo calcular la ruta con el servicio de rutas')
   return best
