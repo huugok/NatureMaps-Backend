@@ -23,6 +23,10 @@ export interface GenerateRouteOptions {
   /** Distancia de caminata objetivo en metros. */
   targetDistance: number
   content: RouteTheme
+  /** Forma pedida: «lineal» va recto en una dirección, «circular» cierra el
+   * anillo (y, si la zona no da para cerrarlo, cae a lineal). Por defecto,
+   * circular. */
+  shape?: RouteShape
 }
 
 export interface GeneratedRoute {
@@ -394,6 +398,7 @@ export async function generateRoute(options: GenerateRouteOptions): Promise<Gene
   // se aparta la parada que provoca un rodeo y, si la longitud se desvía, se
   // reescala el radio con la medición real de Valhalla. Se queda el intento
   // más cercano.
+  const wantedShape = options.shape ?? 'circular'
   let scale = 1
   for (let attempt = 0; attempt < 6; attempt++) {
     const ringRadius = baseRingRadius * scale
@@ -408,7 +413,11 @@ export async function generateRoute(options: GenerateRouteOptions): Promise<Gene
     const ringStops = band.length >= minStops ? pickRing(band, start, ringRadius, slotCount, content, excluded) : []
     let shape: RouteShape
     let stops: RouteStop[]
-    if (ringStops.length >= minStops) {
+    if (wantedShape === 'lineal') {
+      // Ruta recta: va en una dirección, sin cerrar el anillo.
+      shape = 'lineal'
+      stops = pickLinear(candidates, start, target * scale, content, excluded)
+    } else if (ringStops.length >= minStops) {
       shape = 'circular'
       stops = ringStops
     } else {

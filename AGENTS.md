@@ -76,7 +76,7 @@ npm run db:generate    # migraciones SQL desde src/db/schema.ts -> drizzle/
 npm run db:migrate     # aplica migraciones
 npm run db:seed        # seed idempotente del contenido editorial (species_profiles)
 npm run db:seed:pois   # seed de fichas de POIs (títulos de Wikipedia curados)
-npm run db:seed:routes # genera y guarda las 9 rutas predefinidas con Valhalla; requiere DATABASE_URL y VALHALLA_URL
+npm run db:seed:routes # genera y guarda las 12 rutas predefinidas con Valhalla; requiere DATABASE_URL y VALHALLA_URL
 npm run import:arbolado # descarga el inventario de Valencia (--limit, --offset); requiere DATABASE_URL
 npm run db:push        # empuja el schema sin migraciones (solo prototipado)
 npm run db:studio      # Drizzle Studio
@@ -155,7 +155,7 @@ botánico-culturales predefinidas. Cada fila guarda nombre (único), theme, shap
 métricas reales de Valhalla, inicio, descripción, `stops` (jsonb, paradas en orden con kind/id/
 nombre/coords/speciesId) y `path` (jsonb, geometría ya decodificada): la ficha se pinta desde BD sin llamar
 al motor de rutas en vivo. El generador vive en `src/services/routeGenerator.ts` (`generateRoute`,
-método reutilizable; la seed solo trae las 9 definiciones) y devuelve rutas circulares (anillo de
+método reutilizable; la seed solo trae las 12 definiciones) y devuelve rutas circulares (anillo de
 paradas repartidas) o lineales (si la zona no da para cerrar el anillo, siempre con la longitud
 objetivo de su categoría). Valhalla se consulta por pares consecutivos de puntos (2 locations por
 petición) para no depender del límite de waypoints. Para que la traza sea circular, las paradas se

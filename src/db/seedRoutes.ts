@@ -4,9 +4,10 @@ import { db } from './index.js'
 import type { RouteTheme } from '../services/routeGenerator.js'
 import { generateRoute } from '../services/routeGenerator.js'
 
-// Seed del catálogo de rutas predefinidas (`npm run db:seed:routes`): nueve
-// rutas —tres por longitud (corta 1–3 km, media 4–7 km, larga 8+ km), una de
-// cada contenido— calculadas una vez con Valhalla y guardadas tal cual en la
+// Seed del catálogo de rutas predefinidas (`npm run db:seed:routes`): doce
+// rutas —cuatro por longitud (corta 1–3 km, media 4–7 km, larga 8+ km), con
+// los tres contenidos (botánica, cultural, mixta) y, en cada longitud, una
+// ruta recta— calculadas una vez con Valhalla y guardadas tal cual en la
 // tabla `routes`. Idempotente: cada ejecución regenera y actualiza la fila por
 // nombre, así que repetirla tras mejorar el generador refresca el catálogo.
 // Requiere DATABASE_URL y VALHALLA_URL (motor de rutas); no es parte de tests.
@@ -20,6 +21,8 @@ interface RouteDefinition {
   start: { latitude: number, longitude: number }
   targetDistance: number
   description: string
+  /** Forma pedida; por defecto, anillo. */
+  shape?: 'circular' | 'lineal'
 }
 
 // Distancias objetivo centradas en su categoría para que el resultado medido
@@ -60,6 +63,17 @@ const DEFINITIONS: RouteDefinition[] = [
   { name: 'Ciencia, mar y vegetación', theme: 'mixta', lengthCategory: 'larga',
     start: CIUDAD_ARTES, targetDistance: TARGETS.larga,
     description: 'La ruta más larga del catálogo: arbolado del eje sureste y patrimonio monumental junto a la Ciudad de las Artes y las Ciencias.' },
+  // Rutas rectas: una por longitud. Van en una dirección, sin cerrar el anillo;
+  // el tema rota para que cada conjunto tenga su propia variedad.
+  { name: 'Del Mercado al Puerto', theme: 'cultural', lengthCategory: 'corta', shape: 'lineal',
+    start: PLAZA_VIRGEN, targetDistance: TARGETS.corta,
+    description: 'Una tirada recta desde la Plaza de la Virgen hacia el mercado y el puerto, parando en los monumentos y recursos turísticos del recorrido.' },
+  { name: 'Ribera del Turia', theme: 'mixta', lengthCategory: 'media', shape: 'lineal',
+    start: JARDIN_TURIA, targetDistance: TARGETS.media,
+    description: 'Un paseo recto siguiendo el cauce del Turia, con el arbolado de los jardines y los hitos del patrimonio histórico en la misma dirección.' },
+  { name: 'Avenida de la Marina', theme: 'botanica', lengthCategory: 'larga', shape: 'lineal',
+    start: CIUDAD_ARTES, targetDistance: TARGETS.larga,
+    description: 'La ruta recta por la avenida de la Marina hasta el mar, entre el arbolado urbano y las palmeras de la playa.' },
 ]
 
 async function seedRoutes() {
@@ -73,6 +87,7 @@ async function seedRoutes() {
         start: definition.start,
         targetDistance: definition.targetDistance,
         content: definition.theme,
+        ...(definition.shape ? { shape: definition.shape } : {}),
       })
       const values = {
         name: definition.name,

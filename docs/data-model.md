@@ -183,14 +183,15 @@ Después de la migración inicial deben aparecer `plant_locations`, `plant_names
 
 `routes` guarda el catálogo de rutas botánico-culturales ya calculadas. El generador
 (`src/services/routeGenerator.ts`, `generateRoute()`) es un método reutilizable: recibe inicio,
-longitud objetivo y contenido (`botanica` = solo plantas, `cultural` = solo POIs, `mixta` = ambos,
-alternados por hueco), busca paradas en el inventario y el catálogo de POIs, intenta cerrar un
-anillo repartido alrededor del inicio y, si la zona no da para eso, cae a una ruta lineal en la
-dirección con más paradas, siempre con la longitud objetivo de su categoría (corta 1–3 km, media
-4–7 km, larga 8+ km). Las métricas y la geometría las mide Valhalla a pie; el cliente
+longitud objetivo, contenido (`botanica` = solo plantas, `cultural` = solo POIs, `mixta` = ambos,
+alternados por hueco) y forma pedida (`circular` = anillo; `lineal` = recta en una dirección),
+busca paradas en el inventario y el catálogo de POIs, intenta cerrar un anillo repartido alrededor
+del inicio y, si la zona no da para eso, cae a una ruta lineal en la dirección con más paradas,
+siempre con la longitud objetivo de su categoría (corta 1–3 km, media 4–7 km, larga 8+ km). Las
+métricas y la geometría las mide Valhalla a pie; el cliente
 (`src/services/valhalla.ts`) encadena pares consecutivos de puntos y decodifica la polilínea
-(precision 6). La seed (`npm run db:seed:routes`, `src/db/seedRoutes.ts`) solo trae las 9
-definiciones (3 longitudes × 3 contenidos) y hace upsert idempotente por nombre. El listado
+(precision 6). La seed (`npm run db:seed:routes`, `src/db/seedRoutes.ts`) solo trae las 12
+definiciones (4 por longitud: 3 contenidos + una recta) y hace upsert idempotente por nombre. El listado
 (`GET /routes`) no devuelve `path` (puede pesar cientos de KB); la ficha (`GET /routes/:id`) sí.
 
 Las rutas de usuario (que el visitante cree desde el mapa) quedan para otra UT y reutilizarán

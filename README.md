@@ -139,11 +139,11 @@ La ficha de los POIs se llena con `npm run db:seed:pois` a partir de una lista d
 elegidos a mano. El criterio de qué se cura, cómo se elige el título y qué está prohibido (emparejar
 por parecido) está en [la guía de curaduría](docs/poi-curaduria.md).
 
-El catálogo de rutas se genera con `npm run db:seed:routes`: nueve rutas predefinidas (tres por
-longitud, una de cada contenido) que `generateRoute()` calcula una vez con Valhalla y guarda tal
-cual en la tabla `routes` (la API nunca llama al motor de rutas en vivo). Necesita `DATABASE_URL` y
-`VALHALLA_URL` (servidor demo FOSSGIS o despliegue Docker propio). Es idempotente: repetirla
-regenera y actualiza cada ruta por nombre, útil tras ajustar el generador.
+El catálogo de rutas se genera con `npm run db:seed:routes`: doce rutas predefinidas (cuatro por
+longitud, con los tres contenidos y una recta en cada longitud) que `generateRoute()` calcula una vez
+con Valhalla y guarda tal cual en la tabla `routes` (la API nunca llama al motor de rutas en vivo).
+Necesita `DATABASE_URL` y `VALHALLA_URL` (servidor demo FOSSGIS o despliegue Docker propio). Es
+idempotente: repetirla regenera y actualiza cada ruta por nombre, útil tras ajustar el generador.
 
 ## Desarrollo y comandos
 
@@ -168,7 +168,7 @@ de APIs externas. No hay linter: la verificación es `npm test`, que ejecuta tod
 | `npm.cmd run test:pois` | Solo la suite de POIs. |
 | `npm.cmd run test:profiles` | Solo el informe de curaduría (`--dry-run`). |
 | `npm.cmd run test:routes` | Solo la suite de rutas (generador con Valhalla simulado + catálogo). |
-| `npm.cmd run db:seed:routes` | Genera y guarda las 9 rutas predefinidas con Valhalla; requiere `DATABASE_URL` y `VALHALLA_URL`. Idempotente por nombre. |
+| `npm.cmd run db:seed:routes` | Genera y guarda las 12 rutas predefinidas con Valhalla; requiere `DATABASE_URL` y `VALHALLA_URL`. Idempotente por nombre. |
 | `npm.cmd run db:seed:pois -- --dry-run` | Revisa nombres e idiomas de `CURATED_POIS` sin red ni escritura; sale con 1 si alguno no empareja. |
 | `node docs/check-db.mjs` | SELECT de conexión, sin cambios. |
 | `npm.cmd run db:generate -- --name=nombre_del_cambio` | Genera SQL y snapshot locales desde el esquema; no modifica Neon. |

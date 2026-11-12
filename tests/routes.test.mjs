@@ -150,6 +150,25 @@ test('Rutas predefinidas: generador, cliente Valhalla y catálogo', async (t) =>
       assert.ok(onBand >= route.path.length / 2, `trazado por el anillo: ${onBand}/${route.path.length}`)
     })
 
+    await t.test('una ruta recta a petición no cierra el anillo aunque la zona lo permita', async () => {
+      await clearStops()
+      // 16 plantas repartidas en un anillo de 245 m: la zona da para un anillo.
+      for (let k = 0; k < 16; k++) {
+        const angle = (Math.PI * 2 * k) / 16
+        await insertPlant(245 * Math.sin(angle) / 110_540, 245 * Math.cos(angle) / 111_320, `Planta ${k}`)
+      }
+      const route = await generateRoute({
+        start: { latitude: 0, longitude: 0 },
+        targetDistance: 2000,
+        content: 'botanica',
+        shape: 'lineal',
+      })
+      assert.equal(route.shape, 'lineal')
+      assert.ok(route.stops.length >= 3, `paradas: ${route.stops.length}`)
+      // En línea no se cierra el anillo.
+      assert.ok(Math.abs(route.path[0].latitude - route.path[route.path.length - 1].latitude) > 1e-5)
+    })
+
     await t.test('cae a una ruta lineal con la longitud objetivo cuando no hay anillo', async () => {
       await clearStops()
       // Solo paradas hacia el este, cada 500 m: no hay nada al norte/sur/oeste.
