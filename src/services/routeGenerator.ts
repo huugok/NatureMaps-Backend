@@ -90,7 +90,7 @@ async function fetchCandidates(
   const queries = [
     content !== 'cultural' ? db.execute<Candidate>(sql`
       select 'planta'::text as kind, p.id, coalesce(n.name, s.scientific_name, p.reported_scientific_name, 'Planta sin identificar') as name,
-        p.latitude, p.longitude, round(${distance}::numeric)::int as distance
+        p.latitude, p.longitude, p.species_id as "speciesId", round(${distance}::numeric)::int as distance
       from plant_locations p
       left join species s on s.id = p.species_id
       left join lateral (
@@ -101,7 +101,7 @@ async function fetchCandidates(
       order by random() limit 800`) : null,
     content !== 'botanica' ? db.execute<Candidate>(sql`
       select 'poi'::text as kind, p.id, p.name, p.latitude, p.longitude,
-        round(${distance}::numeric)::int as distance
+        null::int as "speciesId", round(${distance}::numeric)::int as distance
       from pois p
       where ${bbox} and ${distance} <= ${searchRadius}::double precision
       order by ${distance} asc limit 300`) : null,
@@ -112,7 +112,9 @@ async function fetchCandidates(
   for (const result of results) for (const row of result.rows) {
     if (row.kind === 'planta' || row.kind === 'poi') {
       candidates.push({ kind: row.kind as RouteStopKind, id: row.id, name: row.name,
-        latitude: row.latitude, longitude: row.longitude, distance: row.distance })
+        latitude: row.latitude, longitude: row.longitude,
+        speciesId: (row as { speciesId?: number | null }).speciesId ?? null,
+        distance: row.distance })
     }
   }
   return candidates
@@ -151,7 +153,7 @@ function pickRing(candidates: Candidate[], start: { latitude: number, longitude:
   }
   const toStop = (candidate: Candidate): { stop: RouteStop, angle: number } => ({
     stop: { kind: candidate.kind, id: candidate.id, name: candidate.name,
-      latitude: candidate.latitude, longitude: candidate.longitude },
+      latitude: candidate.latitude, longitude: candidate.longitude, speciesId: candidate.speciesId },
     angle: angleOf(project(start, candidate)),
   })
   const scoreOf = (candidate: Candidate, ideal: Plane) => {
@@ -223,7 +225,7 @@ function pickLinear(candidates: Candidate[], start: { latitude: number, longitud
     if (!chosen) continue
     used.add(chosen)
     stops.push({ stop: { kind: chosen.kind, id: chosen.id, name: chosen.name,
-      latitude: chosen.latitude, longitude: chosen.longitude },
+      latitude: chosen.latitude, longitude: chosen.longitude, speciesId: chosen.speciesId },
       distance: chosen.distance })
   }
   // Orden de ida: de la parada más cercana a la más lejana.
@@ -235,7 +237,8 @@ function pickLinear(candidates: Candidate[], start: { latitude: number, longitud
     for (let index = Math.max(0, byDistance.length - slotCount); index < byDistance.length; index++) {
       const entry = byDistance[index]
       if (entry) picked.push({ kind: entry.candidate.kind, id: entry.candidate.id, name: entry.candidate.name,
-        latitude: entry.candidate.latitude, longitude: entry.candidate.longitude })
+        latitude: entry.candidate.latitude, longitude: entry.candidate.longitude,
+        speciesId: entry.candidate.speciesId })
     }
     return picked.length >= Math.max(1, ordered.length) ? picked : ordered
   }

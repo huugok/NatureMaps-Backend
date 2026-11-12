@@ -169,6 +169,9 @@ export type RouteStop = {
   name: string
   latitude: number
   longitude: number
+  /** Especie del catálogo cuando la parada es una planta identificada; null en
+   * POIs y plantas sin enlazar. Permite abrir su ficha real desde el mapa. */
+  speciesId: number | null
 }
 
 export type RoutePoint = { latitude: number, longitude: number }
