@@ -232,8 +232,11 @@ API:
 - `GET /species/:id` añade `greenAreas`: parques y jardines con ejemplares de la especie.
 - `POST /green-areas/import` — igual que el script.
 
-Los artículos están redactados solo en `es`; `ca` y `en` son entradas nuevas en
-`src/db/seedEditorial.ts` con el mismo `slug`.
+Los artículos están en `es`, `ca` (valenciano) y `en`. El contenido vive en `src/db/editorial/`:
+`articles.ts` declara la estructura de cada artículo (sección, zona verde enlazada, orden y
+fuentes) y `es.ts`, `va.ts` y `en.ts` llevan solo los textos. Así una traducción no puede
+cambiar el tema ni las fuentes de un artículo, y añadir un idioma es añadir un fichero. Si a un
+artículo le falta un idioma, la lectura cae a `es` y la respuesta lo indica en `language`.
 
 ### Probar sin tocar la base compartida
 

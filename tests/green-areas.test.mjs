@@ -203,12 +203,39 @@ test('zonas verdes y contenido editorial (NM-08)', async (t) => {
         || ['jardin-del-turia', 'jardin-de-las-hesperides', 'jardin-de-monforte'].includes(entry.greenAreaGroup))
       const first = await seedEditorial(entries)
       assert.equal(first.upserted, entries.length)
+      assert.deepEqual(first.languages, ['ca', 'en', 'es'])
       await seedEditorial(entries)
       const count = (await pg.query('select count(*)::int as count from editorial_articles')).rows[0].count
       assert.equal(count, entries.length, 'ejecutarla dos veces no duplica')
       assert.ok(EDITORIAL_ARTICLES.every((entry) => entry.sources.length > 0 && entry.sources.every((source) => source.url.startsWith('https://'))))
       for (const topic of ['flora', 'parques', 'jardines', 'paisajismo']) {
         assert.ok(EDITORIAL_ARTICLES.some((entry) => entry.topic === topic), `falta la sección ${topic}`)
+      }
+      // Cada artículo existe en los tres idiomas, con el mismo tema, la misma
+      // zona enlazada y las mismas fuentes: una traducción no puede desviarse.
+      const bySlug = new Map()
+      for (const entry of EDITORIAL_ARTICLES) {
+        const group = bySlug.get(entry.slug) ?? new Map()
+        group.set(entry.language, entry)
+        bySlug.set(entry.slug, group)
+      }
+      for (const [slug, byLanguage] of bySlug) {
+        assert.deepEqual([...byLanguage.keys()].sort(), ['ca', 'en', 'es'], `${slug} no está en los tres idiomas`)
+        const es = byLanguage.get('es')
+        for (const language of ['ca', 'en']) {
+          const other = byLanguage.get(language)
+          assert.equal(other.topic, es.topic, `${slug} (${language}): sección distinta`)
+          assert.equal(other.greenAreaGroup, es.greenAreaGroup, `${slug} (${language}): zona distinta`)
+          assert.equal(other.position, es.position, `${slug} (${language}): orden distinto`)
+          assert.deepEqual(other.sources.map((source) => source.url), es.sources.map((source) => source.url),
+            `${slug} (${language}): fuentes distintas`)
+          // El cuerpo siempre cambia al traducir; el título puede coincidir
+          // entre castellano y valenciano («Flora característica de València»).
+          assert.notEqual(other.body, es.body, `${slug} (${language}): cuerpo sin traducir`)
+          // Mismo número de párrafos: una traducción no se deja nada fuera.
+          assert.equal(other.body.split('\n\n').length, es.body.split('\n\n').length,
+            `${slug} (${language}): distinto número de párrafos`)
+        }
       }
       await assert.rejects(() => seedEditorial([{ ...entries[0], slug: 'sin-fuentes', sources: [] }]), /no declara fuentes/)
     })
@@ -224,16 +251,17 @@ test('zonas verdes y contenido editorial (NM-08)', async (t) => {
       const zona = await request('/editorial?group=jardin-de-las-hesperides')
       assert.deepEqual(zona.body.articles.map((article) => article.slug), ['jardin-de-las-hesperides'])
 
-      await pg.query(`insert into editorial_articles (slug, language, topic, green_area_group, title, summary, body, sources, position)
-        values ('jardin-de-las-hesperides', 'ca', 'jardines', 'jardin-de-las-hesperides', 'Jardí de les Hespèrides', 'Resum', 'Cos',
-        '[{"name":"Font","description":"d","url":"https://example.invalid"}]', 33)`)
       const ca = await request('/editorial/jardin-de-las-hesperides?lang=ca')
       assert.equal(ca.body.title, 'Jardí de les Hespèrides')
       assert.equal(ca.body.language, 'ca')
       const en = await request('/editorial/jardin-de-las-hesperides?lang=en')
-      assert.equal(en.body.language, 'es', 'sin traducción se sirve el español y se dice')
-      assert.ok(en.body.body.includes('cítricos'))
+      assert.equal(en.body.language, 'en')
+      assert.ok(en.body.body.includes('citrus'))
       assert.ok(en.body.sources.length >= 1)
+      // Un idioma sin traducir cae al español, y la respuesta lo dice.
+      const fr = await request('/editorial/jardin-de-las-hesperides?lang=fr')
+      assert.equal(fr.body.language, 'es')
+      assert.ok(fr.body.body.includes('cítricos'))
       assert.equal((await request('/editorial?lang=ca')).body.articles.filter((article) => article.slug === 'jardin-de-las-hesperides').length, 1)
     })
 
