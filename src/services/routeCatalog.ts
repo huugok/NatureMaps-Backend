@@ -22,13 +22,7 @@ type RouteRow = {
   stopsCount: number
 }
 
-// El driver puede entregar jsonb como valor ya parseado o como texto según el
-// formato del wire; normalizar aquí mantiene el servicio honesto con ambos.
-function jsonColumn<T>(value: unknown): T | null {
-  if (value == null) return null
-  if (typeof value === 'string') { try { return JSON.parse(value) as T } catch { return null } }
-  return value as T
-}
+// El driver entrega el jsonb ya parseado, así que se usa tal cual.
 
 function routeSummary(row: RouteRow) {
   return {
@@ -48,8 +42,8 @@ function routeSummary(row: RouteRow) {
 function routeDetail(row: RouteRow) {
   return {
     ...routeSummary(row),
-    stops: jsonColumn<RouteStop[]>(row.stops) ?? [],
-    path: jsonColumn<RoutePoint[]>(row.path) ?? [],
+    stops: row.stops,
+    path: row.path ?? [],
   }
 }
 

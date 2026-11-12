@@ -153,12 +153,14 @@ Wikipedia con `coalesce` y las fotos siguen en `species_enrichments`),
 `pois` y `poi_profiles` (NM-06) y `routes` (migración `0004_far_payback`): catálogo de rutas
 botánico-culturales predefinidas. Cada fila guarda nombre (único), theme, shape, length_category,
 métricas reales de Valhalla, inicio, descripción, `stops` (jsonb, paradas en orden con kind/id/
-nombre/coords) y `path` (jsonb, geometría ya decodificada): la ficha se pinta desde BD sin llamar
+nombre/coords/speciesId) y `path` (jsonb, geometría ya decodificada): la ficha se pinta desde BD sin llamar
 al motor de rutas en vivo. El generador vive en `src/services/routeGenerator.ts` (`generateRoute`,
 método reutilizable; la seed solo trae las 9 definiciones) y devuelve rutas circulares (anillo de
 paradas repartidas) o lineales (si la zona no da para cerrar el anillo, siempre con la longitud
 objetivo de su categoría). Valhalla se consulta por pares consecutivos de puntos (2 locations por
-petición) para no depender del límite de waypoints.
+petición) para no depender del límite de waypoints; un tramo que hace ida y vuelta por la misma
+calle se vuelve a pedir con un punto intermedio por fuera del anillo (3 locations), y solo se
+acepta si el rodeo baja y la longitud no se dispara.
 Consultar `docs/data-model.md` antes de cambiar importación o lectura. `users` se conserva.
 El usuario redujo expresamente el alcance a plantas, Wikipedia y la integración Pl@ntNet existente.
 No recrear logs, payloads completos ni infraestructura genérica para proveedores futuros.
