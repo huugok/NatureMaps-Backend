@@ -179,3 +179,58 @@ Después de la migración inicial deben aparecer `plant_locations`, `plant_names
 Persistencia de observaciones Pl@ntNet/usuarios, sincronización de cambios municipales,
 deduplicación entre fuentes, GBIF, BDBCV, parques, rutas y traducciones automáticas. Cada uno
 requerirá su propio cambio cuando se implemente el flujo que lo utiliza.
+
+## Zonas verdes y contenido editorial (NM-08)
+
+Migración `0004_green_areas_editorial.sql`: dos tablas y una columna.
+
+| Tabla / columna | Datos y responsabilidad |
+|---|---|
+| `green_areas` | Un polígono por `id_jardin` de la capa «Espais Verds» del geoportal (`OPENDATA/MedioAmbiente/MapServer/8`, CC BY 4.0, 807 polígonos). Nombre curado y nombre original, `group_slug`, tipología, barrio, superficie, `featured`, contorno GeoJSON en `jsonb`, caja envolvente y punto representativo. |
+| `plant_locations.green_area_id` | Zona que contiene el ejemplar (FK, `set null`). La calcula el import; `null` = arbolado viario. |
+| `editorial_articles` | Un artículo por `(slug, language)`: sección (`flora`, `parques`, `jardines`, `paisajismo`), zona enlazada (`green_area_group`), título, resumen, cuerpo y fuentes (`jsonb`). |
+
+Decisiones:
+
+- **Sin PostGIS.** El contorno es GeoJSON y el punto-en-polígono se hace en Node
+  (`src/services/geometry.ts`), una vez, al importar. Los tests siguen corriendo en PGlite.
+- **`featured`** separa los 78 parques y jardines («Parques Urbanos», «Jardines Especial
+  Protección») del verde viario. Solo los destacados se pintan en el mapa; todos sirven para
+  situar ejemplares.
+- **`group_slug`** reúne los polígonos que el visitante ve como un parque (los tramos del
+  Jardín del Turia → `jardin-del-turia`) y es el identificador legible de la ficha. La lista de
+  nombres y grupos curados está en `valenciaGreenAreas.ts` (`CURATED`); la fuente escribe en
+  mayúsculas y con erratas («JARDIN DE LAS ESPERIDES»), y su valor se conserva en `reported_name`.
+- **Artículo → zona sin FK**: el grupo no es único en `green_areas`. La seed lo valida: si las
+  zonas están importadas y el grupo no existe, falla.
+- **POI → zona sin tabla**: se resuelve por coordenadas con `GET /green-areas/at`.
+
+Comandos (en este orden la primera vez):
+
+```bash
+npm run db:migrate            # aplica 0004 (avisar al equipo: base compartida)
+npm run import:zonas-verdes   # descarga la capa y cruza el arbolado; idempotente
+npm run db:seed:editorial     # carga los artículos; idempotente
+npm run test:zonas-verdes
+```
+
+Volver a ejecutar `import:zonas-verdes` después de importar arbolado nuevo: el cruce árbol → zona
+se calcula ahí.
+
+API:
+
+- `GET /green-areas` — capa del mapa: parques y jardines con contorno, caja y centro.
+  `?all=true` añade el verde viario, `?geometry=false` omite el contorno,
+  `?bbox=oeste,sur,este,norte` recorta a la vista.
+- `GET /green-areas/at?lat=&lon=&radius=` — zona que contiene el punto o, si no hay, el parque
+  más cercano dentro del radio (150 m por defecto). `relation`: `inside` | `near` | `null`.
+- `GET /green-areas/:id`, `GET /green-areas/group/:slug` — ficha: polígonos del grupo, recuento
+  de ejemplares y especies, las 10 especies más frecuentes, POIs de dentro, artículos y fuente.
+- `GET /editorial?topic=&group=&lang=` — artículos (sin cuerpo) por sección o zona.
+  `GET /editorial/:slug?lang=` — artículo completo con fuentes. Idioma con fallback es → ca → en;
+  `language` devuelve el idioma real.
+- `GET /species/:id` añade `greenAreas`: parques y jardines con ejemplares de la especie.
+- `POST /green-areas/import` — igual que el script.
+
+Los artículos están redactados solo en `es`; `ca` y `en` son entradas nuevas en
+`src/db/seedEditorial.ts` con el mismo `slug`.

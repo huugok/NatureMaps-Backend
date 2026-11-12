@@ -75,6 +75,9 @@ npm run db:generate    # migraciones SQL desde src/db/schema.ts -> drizzle/
 npm run db:migrate     # aplica migraciones
 npm run db:seed        # seed idempotente del contenido editorial (species_profiles)
 npm run import:arbolado # descarga el inventario de Valencia (--limit, --offset); requiere DATABASE_URL
+npm run import:zonas-verdes # zonas verdes del geoportal + cruce con el arbolado (NM-08); idempotente
+npm run db:seed:editorial   # artículos de flora y zonas verdes (NM-08); idempotente
+npm run test:zonas-verdes   # suite de zonas verdes y contenido editorial
 npm run db:push        # empuja el schema sin migraciones (solo prototipado)
 npm run db:studio      # Drizzle Studio
 node docs/check-db.mjs # SELECT de conexión; sin cambios en datos
