@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "dev:local": "tsx scripts/dev-local.mjs",
     "build": "tsc",
     "test": "npm run test:catalog && npm run test:pois && npm run test:profiles && npm run test:zonas-verdes",
     "test:catalog": "tsx --test tests/catalog.test.mjs",

@@ -234,3 +234,11 @@ API:
 
 Los artículos están redactados solo en `es`; `ca` y `en` son entradas nuevas en
 `src/db/seedEditorial.ts` con el mismo `slug`.
+
+### Probar sin tocar la base compartida
+
+`npm run dev:local` arranca el backend con PostgreSQL en memoria (PGlite), aplica todas las
+migraciones, descarga del geoportal el arbolado del centro de la ciudad (`--arboles=N`, 6000 por defecto), los
+POIs y las zonas verdes, y carga las seeds. No usa `.env` ni conecta con Neon; al cerrar el
+proceso no queda nada. Con pocos árboles los recuentos por parque son parciales: sirve para ver
+la capa, las fichas y los artículos, no para validar cifras.

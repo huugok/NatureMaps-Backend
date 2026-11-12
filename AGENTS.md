@@ -64,6 +64,7 @@ base ni de las migraciones intermedias descartadas. La documentación vigente es
 ```bash
 npm install
 npm run dev            # tsx watch src/index.ts
+npm run dev:local      # backend con base en memoria y datos reales del geoportal; no toca Neon (--arboles=N)
 npm run build          # tsc -> dist/
 npm test               # todas las suites (catálogo + POIs + perfiles)
 npm run test:catalog   # Node Test Runner + tsx + PGlite; sin .env ni servicios externos
