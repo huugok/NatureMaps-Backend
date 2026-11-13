@@ -316,3 +316,25 @@ test('zonas verdes y contenido editorial (NM-08)', async (t) => {
     await pg.close()
   }
 })
+
+// Caso real del campus dels Tarongers: el Jardín Central (destacado, 25.922 m²)
+// comparte terreno con dos isletas de «Acompañamiento Viario» de 1.180 y 3.474
+// m². Si ganara la más pequeña, los ejemplares irían a las isletas —que no se
+// muestran— y la ficha del parque saldría vacía.
+test('en zonas solapadas el ejemplar va al parque, no a la isleta viaria', async () => {
+  const { areaContaining, buildAreaIndex } = await import('../src/services/greenAreaImport.ts')
+  const cuadrado = (oeste, sur, este, norte) => ({
+    type: 'Polygon',
+    coordinates: [[[oeste, sur], [este, sur], [este, norte], [oeste, norte], [oeste, sur]]],
+  })
+  const areas = buildAreaIndex([
+    { id: 1, featured: true, areaM2: 25922, geometry: cuadrado(-0.350, 39.470, -0.340, 39.480) },
+    { id: 2, featured: false, areaM2: 1180, geometry: cuadrado(-0.346, 39.474, -0.344, 39.476) },
+    { id: 3, featured: true, areaM2: 900, geometry: cuadrado(-0.3455, 39.4745, -0.3450, 39.4750) },
+  ])
+
+  assert.equal(areaContaining(areas, 39.4755, -0.3452), 1, 'el parque gana a la isleta que lo solapa')
+  assert.equal(areaContaining(areas, 39.4748, -0.3452), 3, 'entre dos destacadas gana la más pequeña')
+  assert.equal(areaContaining(areas, 39.4790, -0.3450), 1, 'fuera de la isleta sigue siendo el parque')
+  assert.equal(areaContaining(areas, 39.4600, -0.3450), null, 'fuera de todo, ninguna zona')
+})

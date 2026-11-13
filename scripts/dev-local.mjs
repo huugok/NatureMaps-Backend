@@ -7,10 +7,15 @@
 //   npm run dev:local                    (6000 árboles del centro de València)
 //   npm run dev:local -- --arboles=14000 (todo el centro: tarda más en arrancar)
 //   npm run dev:local -- --arboles=0     (solo zonas verdes, POIs y artículos)
+//   npm run dev:local -- --zona=campus   (Tarongers y Blasco Ibáñez en vez del centro)
 //
-// El arbolado se limita al centro (Botànic, Hespérides, Jardín del Turia,
-// Viveros, Glorieta y Parterre) para que los parques tengan flora con pocas
-// descargas. Las zonas verdes, los POIs y los artículos son los de toda la ciudad.
+// El arbolado se limita a una zona para que sus parques tengan flora con pocas
+// descargas: el inventario completo son unos 160.000 ejemplares y descargarlo
+// entero al arrancar no es viable. Fuera de la zona elegida los parques salen
+// sin ejemplares, que es lo que se ve al abrir su ficha; no es un hueco de los
+// datos municipales, sino de lo que se ha descargado aquí.
+//
+// Las zonas verdes, los POIs y los artículos sí son los de toda la ciudad.
 //
 // Necesita internet para descargar del geoportal. Si una descarga falla, el
 // servidor arranca igualmente con lo que haya y lo avisa.
@@ -27,11 +32,39 @@ function option(name, fallback, min, max) {
   return Number(text)
 }
 
+// Cajas WGS84 con los ejemplares que el inventario municipal tiene en cada una,
+// comprobado contra la capa 151 del geoportal (2026-11-13).
+const ZONAS = {
+  centro: {
+    caja: { west: -0.392, south: 39.472, east: -0.362, north: 39.484 },
+    descripcion: 'centro: Botànic, Hespérides, Jardín del Turia, Viveros, Glorieta y Parterre (~14.000 ejemplares)',
+  },
+  // Ceñida a los jardines del campus: así el valor por defecto de --arboles los
+  // descarga todos. Una caja mayor tiene más ejemplares de los que se bajan, y
+  // como se cogen por orden del inventario, los jardines podrían quedarse sin
+  // ninguno y su ficha saldría vacía.
+  campus: {
+    caja: { west: -0.350, south: 39.4735, east: -0.338, north: 39.4815 },
+    descripcion: 'campus: Jardín Central de Tarongers y Albalat dels Tarongers (~4.100 ejemplares)',
+  },
+}
+
+function zonaElegida() {
+  const arg = process.argv.slice(2).find((value) => value.startsWith('--zona='))
+  if (arg === undefined) return 'centro'
+  const nombre = arg.slice('--zona='.length)
+  if (!Object.hasOwn(ZONAS, nombre)) {
+    console.error(`--zona debe ser una de: ${Object.keys(ZONAS).join(', ')}`)
+    process.exit(1)
+  }
+  return nombre
+}
+
 const trees = option('arboles', 6000, 0, 200_000)
+const zona = zonaElegida()
 const port = Number(process.env.PORT) || 3000
 const PAGE = 200
-// Caja WGS84 del centro de València: unos 14.000 ejemplares en el inventario.
-const CENTRE = { west: -0.392, south: 39.472, east: -0.362, north: 39.484 }
+const CENTRE = ZONAS[zona].caja
 
 console.log('Base de datos en memoria: aplicando migraciones…')
 // Fija DATABASE_URL a un valor ficticio y desvía el driver de Neon a PGlite
@@ -49,7 +82,7 @@ async function step(label, run) {
 
 if (trees > 0) {
   const { importValenciaInventory } = await import('../src/services/inventoryImport.ts')
-  await step(`Arbolado del centro (hasta ${trees} ejemplares, de ${PAGE} en ${PAGE})`, async () => {
+  await step(`Arbolado del ${ZONAS[zona].descripcion} — hasta ${trees}, de ${PAGE} en ${PAGE}`, async () => {
     let stored = 0
     for (let offset = 0; offset < trees; offset += PAGE) {
       const page = await importValenciaInventory(Math.min(PAGE, trees - offset), offset, CENTRE)
@@ -78,4 +111,9 @@ const { app } = await import('../src/app.ts')
 app.listen(port, () => {
   console.log(`\nBackend local en http://localhost:${port} (base en memoria; Ctrl+C para cerrar y descartarla).`)
   console.log('Arranca el frontend con VITE_API_URL apuntando a esta dirección (es el valor por defecto).')
+  if (trees > 0) {
+    const otras = Object.keys(ZONAS).filter((nombre) => nombre !== zona)
+    console.log(`\nSolo se ha descargado el arbolado del ${zona}: las fichas de parques de fuera saldrán sin`)
+    console.log(`ejemplares. Para verlos ahí: npm run dev:local -- --zona=${otras[0]}`)
+  }
 })

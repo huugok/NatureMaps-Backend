@@ -50,16 +50,28 @@ desplegar los datos primero y mergear después, sin ventana de error.
 
 Mergear la PR de `feat/contenido-flora-zonas-verdes` en el repo del backend y
 volver a desplegar el servicio. Hasta que esto no esté, los endpoints nuevos
-(`/zonas-verdes`, `/zonas-verdes/:grupo`, `/articulos`, `/articulos/:slug`)
-devuelven 404 y el frontend mostrará su aviso de «no se han podido cargar».
+devuelven 404 y el frontend mostrará su aviso de «no se han podido cargar»:
+
+| Ruta | Qué devuelve |
+| --- | --- |
+| `GET /green-areas` | la capa del mapa: solo parques y jardines, con contorno |
+| `GET /green-areas/at?lat=&lon=` | en qué zona cae un punto (es lo que usa la ficha de un POI) |
+| `GET /green-areas/group/:slug` | la ficha de una zona: flora, POIs y artículos |
+| `GET /green-areas/:id` | una zona suelta |
+| `GET /editorial` | los artículos, filtrables por tema, zona e idioma |
+| `GET /editorial/:slug` | un artículo |
 
 Comprobación rápida una vez desplegado, sustituyendo por la URL real del
 backend:
 
 ```bash
-curl "https://<backend>/zonas-verdes?destacadas=1" | head -c 300
-curl "https://<backend>/articulos?lang=es" | head -c 300
+curl "https://<backend>/green-areas?geometry=false" | head -c 300
+curl "https://<backend>/editorial?lang=es" | head -c 300
 ```
+
+En la primera, cada zona trae un campo `plants` con cuántos ejemplares del
+inventario hay dentro. Si salieran todas a cero, el paso 1 no llegó a cruzar
+el arbolado: relanza `npm run import:zonas-verdes`.
 
 ## 3. Frontend
 

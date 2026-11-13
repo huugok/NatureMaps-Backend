@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { CatalogError } from './catalogError.js'
-import { parseAreaGeometry, pointInGeometry } from './geometry.js'
+import { boundingBox, parseAreaGeometry, pointInGeometry } from './geometry.js'
 import type { AreaGeometry } from './geometry.js'
 import { fetchValenciaGreenAreas, GREEN_AREAS_SOURCE } from './valenciaGreenAreas.js'
 import type { GreenAreaRecord } from './valenciaGreenAreas.js'
@@ -51,6 +51,7 @@ async function storeRecords(records: GreenAreaRecord[], chunkSize = 25) {
 
 interface AreaIndexEntry {
   id: number
+  featured: boolean
   size: number
   minLatitude: number
   maxLatitude: number
@@ -59,35 +60,65 @@ interface AreaIndexEntry {
   geometry: AreaGeometry
 }
 
-async function loadAreaIndex(): Promise<AreaIndexEntry[]> {
-  const result = await db.execute<{
-    id: number, areaM2: number | null, geometry: unknown
-    minLatitude: number, maxLatitude: number, minLongitude: number, maxLongitude: number
-  }>(sql`
-    select id, area_m2 as "areaM2", geometry, min_latitude as "minLatitude", max_latitude as "maxLatitude",
-      min_longitude as "minLongitude", max_longitude as "maxLongitude"
-    from green_areas order by id
-  `)
+// `type` y no `interface`: db.execute<T> exige T asignable a Record<string, unknown>,
+// y una interface no lleva índice de cadena implícito.
+type AreaIndexRow = {
+  id: number
+  featured: boolean
+  areaM2: number | null
+  geometry: unknown
+  minLatitude?: number
+  maxLatitude?: number
+  minLongitude?: number
+  maxLongitude?: number
+}
+
+/**
+ * Ordena las zonas para resolver los solapamientos. Las zonas del geoportal se
+ * pisan entre sí: un parque grande comparte terreno con las isletas y medianas
+ * de «Acompañamiento Viario» que lo bordean. Si ganara siempre la más pequeña,
+ * esas isletas se quedarían con los ejemplares y el parque —que es el que el
+ * usuario abre desde el mapa— saldría vacío. Así que primero ganan los parques
+ * y jardines destacados, y solo entre iguales decide el tamaño.
+ */
+export function buildAreaIndex(rows: AreaIndexRow[]): AreaIndexEntry[] {
   const entries: AreaIndexEntry[] = []
-  for (const row of result.rows) {
+  for (const row of rows) {
     const geometry = parseAreaGeometry(typeof row.geometry === 'string' ? JSON.parse(row.geometry) : row.geometry)
     if (!geometry) continue
-    const boxSize = (Number(row.maxLatitude) - Number(row.minLatitude)) * (Number(row.maxLongitude) - Number(row.minLongitude))
+    const box = boundingBox(geometry)
+    const minLatitude = row.minLatitude === undefined ? box.minLatitude : Number(row.minLatitude)
+    const maxLatitude = row.maxLatitude === undefined ? box.maxLatitude : Number(row.maxLatitude)
+    const minLongitude = row.minLongitude === undefined ? box.minLongitude : Number(row.minLongitude)
+    const maxLongitude = row.maxLongitude === undefined ? box.maxLongitude : Number(row.maxLongitude)
+    const boxSize = (maxLatitude - minLatitude) * (maxLongitude - minLongitude)
     entries.push({
       id: Number(row.id),
-      // Para desempatar zonas solapadas gana la más pequeña (la más específica).
+      featured: row.featured === true,
       size: row.areaM2 === null ? boxSize * 1e10 : Number(row.areaM2),
-      minLatitude: Number(row.minLatitude),
-      maxLatitude: Number(row.maxLatitude),
-      minLongitude: Number(row.minLongitude),
-      maxLongitude: Number(row.maxLongitude),
+      minLatitude,
+      maxLatitude,
+      minLongitude,
+      maxLongitude,
       geometry,
     })
   }
-  return entries.sort((a, b) => a.size - b.size)
+  return entries.sort((a, b) => Number(b.featured) - Number(a.featured) || a.size - b.size)
 }
 
-/** Zona que contiene el punto: la más pequeña de las que lo incluyen, o null. */
+async function loadAreaIndex(): Promise<AreaIndexEntry[]> {
+  const result = await db.execute<AreaIndexRow>(sql`
+    select id, featured, area_m2 as "areaM2", geometry, min_latitude as "minLatitude", max_latitude as "maxLatitude",
+      min_longitude as "minLongitude", max_longitude as "maxLongitude"
+    from green_areas order by id
+  `)
+  return buildAreaIndex(result.rows)
+}
+
+/**
+ * Zona que contiene el punto. Entre varias que lo contengan gana el parque o
+ * jardín destacado; a igualdad, la más pequeña. Devuelve null si ninguna.
+ */
 export function areaContaining(areas: AreaIndexEntry[], latitude: number, longitude: number): number | null {
   for (const area of areas) {
     if (latitude < area.minLatitude || latitude > area.maxLatitude
