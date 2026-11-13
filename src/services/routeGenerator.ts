@@ -45,6 +45,8 @@ const METERS_PER_STOP = 350
 // Factor de desvío a pie: el camino real por calles es ~30 % más largo que la
 // línea recta entre puntos; con él se traduce la longitud objetivo en radios.
 const WALKING_DETOUR = 1.3
+// Semiancho del corredor de una ruta recta: quanto más estrecho, menos zigzags.
+const CORRIDOR_HALF_DEGREES = 30
 // Radio máximo de búsqueda: el mismo tope que el contrato de /trees/nearby.
 // Radio máximo de búsqueda: el mismo tope que el contrato de /trees/nearby.
 const MAX_SEARCH_RADIUS = 10_000
@@ -279,6 +281,13 @@ function pickLinear(candidates: Candidate[], start: { latitude: number, longitud
   let bestCount = -1
   bins.forEach((count, sector) => { if (count > bestCount) { bestCount = count; bestSector = sector } })
   const center = bestSector * 45 + 22.5
+  // Ejes del corredor: «axial» es lo avanzado en la dirección de la ruta y
+  // «lateral» el desvío de lado. Con ejes (y no con la distancia al inicio) las
+  // paradas avanzan de forma monótona y la ruta va recta en vez de zigzag.
+  const radians = (center * Math.PI) / 180
+  const axis = { x: Math.cos(radians), y: Math.sin(radians) }
+  const along = (point: Plane) => point.x * axis.x + point.y * axis.y
+  const sideways = (point: Plane) => Math.abs(-point.x * axis.y + point.y * axis.x)
 
   const extent = targetDistance / WALKING_DETOUR // largo en línea recta de la ruta
   const slotCount = Math.min(20, Math.max(4, Math.round(targetDistance / METERS_PER_STOP)))
@@ -286,12 +295,11 @@ function pickLinear(candidates: Candidate[], start: { latitude: number, longitud
   const byCandidate = new Map<Candidate, { candidate: Candidate, point: Plane }>()
   for (const entry of projected) byCandidate.set(entry.candidate, entry)
   const inCorridor = (entry: { candidate: Candidate, point: Plane }, idealDistance: number) => {
-    if (Math.abs(angleDiff(center, angleOf(entry.point))) > 45) return null // fuera del corredor
-    const radial = Math.hypot(entry.point.x, entry.point.y)
-    if (radial > extent) return null
+    if (Math.abs(angleDiff(center, angleOf(entry.point))) > CORRIDOR_HALF_DEGREES) return null // fuera del corredor
+    const axial = along(entry.point)
+    if (axial > extent) return null
     // Puntaje: acercarse al ideal a lo largo del corredor y poco desvío lateral.
-    const lateral = Math.abs(radial * Math.sin((angleDiff(center, angleOf(entry.point)) * Math.PI) / 180))
-    return Math.abs(radial - idealDistance) + lateral
+    return Math.abs(axial - idealDistance) + sideways(entry.point)
   }
   const stops: Array<{ stop: RouteStop, distance: number }> = []
   for (let slot = 0; slot < slotCount; slot++) {
@@ -305,9 +313,10 @@ function pickLinear(candidates: Candidate[], start: { latitude: number, longitud
       ?? pickNearest(candidates, used, corridorOf)
     if (!chosen) continue
     used.add(chosen)
+    const entry = byCandidate.get(chosen)
     stops.push({ stop: { kind: chosen.kind, id: chosen.id, name: chosen.name,
       latitude: chosen.latitude, longitude: chosen.longitude, speciesId: chosen.speciesId },
-      distance: chosen.distance })
+      distance: entry ? along(entry.point) : chosen.distance })
   }
   // Orden de ida: de la parada más cercana a la más lejana.
   const ordered = stops.sort((a, b) => a.distance - b.distance).map((entry) => entry.stop)
