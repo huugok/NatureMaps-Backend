@@ -100,6 +100,10 @@ apunte a `localhost`: para probar sin tocar la base compartida está `npm run de
 Después de volver a importar arbolado (`import:arbolado`), repetir el paso 2 para que los
 ejemplares nuevos queden asignados a su zona.
 
+Esto carga los datos, pero no basta para que se vean en la app desplegada: hace falta además
+mergear y volver a desplegar backend y frontend. El orden completo, con qué comprobar en cada
+paso y cómo volver atrás, está en la [guía de despliegue](docs/despliegue-nm08.md).
+
 ## Recargar inventario y Wikipedia
 
 Con el servidor arrancado, en otra terminal:
