@@ -84,8 +84,17 @@ function normalizeFeature(feature: unknown): InventoryRecord {
   }
 }
 
-export async function fetchValenciaTrees(limit: number, offset: number) {
+/** Recorte opcional de la descarga a una caja WGS84 (entornos locales de prueba). */
+export interface InventoryBounds { west: number, south: number, east: number, north: number }
+
+export async function fetchValenciaTrees(limit: number, offset: number, bounds?: InventoryBounds) {
   const url = new URL(ENDPOINT)
+  if (bounds) {
+    url.searchParams.set('geometry', `${bounds.west},${bounds.south},${bounds.east},${bounds.north}`)
+    url.searchParams.set('geometryType', 'esriGeometryEnvelope')
+    url.searchParams.set('inSR', '4326')
+    url.searchParams.set('spatialRel', 'esriSpatialRelIntersects')
+  }
   for (const [key, value] of Object.entries({
     where: '1=1',
     outFields: 'objectid,idarbol,nom_botanico,nom_comu_c,nom_comu_v,estado_gral,distrito,barrio',

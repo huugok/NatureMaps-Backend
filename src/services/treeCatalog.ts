@@ -9,6 +9,8 @@ type TreeRow = {
   reportedScientificName: string | null; commonName: string | null
   commonNameLanguage: string | null; latitude: number; longitude: number
   source: string; externalId: string
+  /** Zona verde que contiene el ejemplar (NM-08); null en arbolado viario. */
+  greenAreaId: number | null
 }
 
 // Order for the lateral common-name join: requested language first (with any
@@ -23,7 +25,8 @@ function selectTrees(language: string, condition: SQL, limit: number, offset: nu
   return db.execute<TreeRow>(sql`
     select p.id, p.species_id as "speciesId", s.scientific_name as "scientificName",
       p.reported_scientific_name as "reportedScientificName", n.name as "commonName",
-      n.language as "commonNameLanguage", p.latitude, p.longitude, p.source, p.external_id as "externalId"
+      n.language as "commonNameLanguage", p.latitude, p.longitude, p.source, p.external_id as "externalId",
+      p.green_area_id as "greenAreaId"
       ${detail ? sql`, p.district, p.neighborhood, p.source_url as "sourceUrl", p.imported_at as "importedAt",
         (select coalesce(jsonb_agg(jsonb_build_object('language', language, 'name', name) order by language), '[]'::jsonb)
          from plant_names where plant_location_id = p.id) as names` : sql``}
@@ -86,7 +89,7 @@ export async function listNearbyTrees(
     select p.id, p.species_id as "speciesId", s.scientific_name as "scientificName",
       p.reported_scientific_name as "reportedScientificName", n.name as "commonName",
       n.language as "commonNameLanguage", p.latitude, p.longitude, p.source, p.external_id as "externalId",
-      round(${distance}::numeric)::int as distance
+      p.green_area_id as "greenAreaId", round(${distance}::numeric)::int as distance
     from plant_locations p left join species s on s.id = p.species_id
     left join lateral (
       select name, language from plant_names where plant_location_id = p.id and language = any(${nameLanguageOrder(language)})

@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
 import { db } from '../db/index.js'
+import { greenAreasForSpecies } from './greenAreaCatalog.js'
 
 function selectSpecies(condition: SQL, limit: number, offset: number, language: string) {
   const languages = [...new Set([language, language.split('-')[0] ?? language, 'es', 'ca', 'en'])]
@@ -52,6 +53,7 @@ export async function getSpecies(id: number, language: string) {
 }
 
 export interface SpeciesDetail extends Record<string, unknown> {
+  greenAreas: Array<{ groupSlug: string, id: number, name: string, plants: number, hasArticle: boolean }>
   locations: {
     total: number
     returned: number
@@ -68,7 +70,8 @@ export interface SpeciesDetail extends Record<string, unknown> {
 export async function getSpeciesDetail(id: number, language: string, locationLimit: number, afterLocationId: number) {
   const species = await getSpecies(id, language)
   if (!species) return null
-  const [totals, page] = await Promise.all([
+  const [greenAreas, totals, page] = await Promise.all([
+    greenAreasForSpecies(id),
     db.execute<{ total: number }>(sql`select count(*)::int as total from plant_locations where species_id = ${id}`),
     db.execute<{ id: number, latitude: number, longitude: number, district: string | null,
       neighborhood: string | null, source: string, sourceUrl: string }>(sql`
@@ -81,6 +84,8 @@ export async function getSpeciesDetail(id: number, language: string, locationLim
   const items = page.rows
   return {
     ...species,
+    // Parques y jardines donde se encuentra la especie (NM-08, PA 3013).
+    greenAreas,
     locations: {
       total: totals.rows[0]?.total ?? 0,
       returned: items.length,
