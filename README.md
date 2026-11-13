@@ -53,11 +53,13 @@ El catálogo tiene **seis tablas**, además de `users`:
 | `species_enrichments` | Texto Wikipedia, Wikidata ID, idioma, enlace y foto opcional con créditos. |
 | `species_profiles` | Ficha editorial curada por especie e idioma (se carga con `npm run db:seed`). |
 | `data_sources` | Una fila por fuente de datos: organismo, licencia, atribución, logo y fecha de la última descarga. |
+| `green_areas` | Parques, jardines y zonas verdes del geoportal municipal, con su contorno (se cargan con `npm run import:zonas-verdes`). |
+| `editorial_articles` | Artículos de flora, parques, jardines y paisajismo por idioma (se cargan con `npm run db:seed:editorial`). |
 
 El esquema está en `src/db/schema.ts`. La [guía del modelo](docs/data-model.md) explica relaciones,
 normalización, límites y organización del código.
 
-Migraciones: `0000_plant_catalog.sql` (inicial), `0001_nifty_lady_ursula.sql` (`species_profiles`) y `0002_data_sources.sql` (`data_sources`).
+Migraciones: `0000_plant_catalog.sql` (inicial), `0001_nifty_lady_ursula.sql` (`species_profiles`), `0002_data_sources.sql` (`data_sources`), `0003_gigantic_tinkerer.sql` y `0004_green_areas_editorial.sql` (`green_areas`, `editorial_articles` y `plant_locations.green_area_id`).
 El reinicio de la base de desarrollo ya se completó. Para una instalación nueva usa una base vacía;
 los siguientes cambios de esquema se aplican mediante migraciones incrementales.
 
@@ -72,6 +74,31 @@ npm.cmd run dev
 
 `db:migrate` aplica solo migraciones pendientes a la base indicada por `DATABASE_URL`.
 Repetirlo sin cambios pendientes no borra datos. Arrancar el servidor no crea tablas ni importa datos.
+
+## Desplegar los datos de flora y zonas verdes (NM-08)
+
+Los contornos de las zonas verdes y los artículos no viajan en el código: se cargan en la base de
+datos. Con `DATABASE_URL` apuntando a Neon, un solo comando hace los tres pasos en orden y es
+idempotente (se puede repetir sin duplicar nada):
+
+```powershell
+npm.cmd run deploy:nm08 -- --check   # qué hay ahora y qué haría; no escribe nada
+npm.cmd run deploy:nm08              # aplica
+```
+
+Qué hace, en este orden:
+
+1. `db:migrate` — crea `green_areas`, `editorial_articles` y la columna `plant_locations.green_area_id`.
+2. `import:zonas-verdes` — descarga los polígonos del geoportal y recalcula en qué zona cae cada
+   ejemplar del arbolado. Es el paso largo: con el inventario completo son varios minutos.
+3. `db:seed:editorial` — carga los artículos en castellano, valenciano e inglés.
+
+Al terminar informa de cuántas zonas, artículos y ejemplares asignados hay, y avisa si algún
+artículo enlaza con un grupo de zonas que no se haya importado. Rechaza una `DATABASE_URL` que
+apunte a `localhost`: para probar sin tocar la base compartida está `npm run dev:local`.
+
+Después de volver a importar arbolado (`import:arbolado`), repetir el paso 2 para que los
+ejemplares nuevos queden asignados a su zona.
 
 ## Recargar inventario y Wikipedia
 
@@ -163,6 +190,9 @@ de APIs externas. No hay linter: la verificación es `npm test`, que ejecuta tod
 | `npm.cmd run db:migrate` | Aplica SQL pendiente a la base configurada. |
 | `npm.cmd run db:studio` | Abre Drizzle Studio. |
 | `npm.cmd run import:arbolado -- --limit=200 --offset=0` | Descarga el inventario de arbolado de Valencia (CC BY 4.0) página a página; requiere `DATABASE_URL`. Registra licencia y hora de descarga; si falla indica `--offset` para reanudar. |
+| `npm.cmd run deploy:nm08 -- --check` | Muestra el estado de zonas verdes y artículos en la base y los pasos que daría; no escribe. |
+| `npm.cmd run deploy:nm08` | Migra, importa zonas verdes (y cruza el arbolado) y carga los artículos, en ese orden. Idempotente. |
+| `npm.cmd run dev:local` | Backend con base en memoria y datos reales del geoportal; no toca Neon (`-- --arboles=N`). |
 | `npm.cmd run db:push` | Solo prototipado; no usar para este cambio versionado. |
 
 Principio: cambiar esquema → generar/revisar migración → comprobar localmente → aplicar → cargar datos.

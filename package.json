@@ -18,6 +18,7 @@
     "db:seed": "tsx src/db/seedProfiles.ts",
     "db:seed:pois": "tsx src/db/seedPoiProfiles.ts",
     "db:seed:editorial": "tsx src/db/seedEditorial.ts",
+    "deploy:nm08": "tsx scripts/deploy-nm08.mjs",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "test:pois": "tsx --test tests/pois.test.mjs",
