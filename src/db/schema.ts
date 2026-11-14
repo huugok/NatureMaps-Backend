@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
-import { check, doublePrecision, index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import type { AnyPgColumn } from 'drizzle-orm/pg-core'
+import { boolean, check, doublePrecision, index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
@@ -40,6 +41,9 @@ export const species = pgTable('species', {
 export const plantLocations = pgTable('plant_locations', {
   id: serial('id').primaryKey(),
   speciesId: integer('species_id').references(() => species.id, { onDelete: 'restrict' }),
+  // Zona verde que contiene el ejemplar (NM-08). La calcula el import de zonas
+  // verdes con punto-en-polígono; null = arbolado viario fuera de cualquier zona.
+  greenAreaId: integer('green_area_id').references((): AnyPgColumn => greenAreas.id, { onDelete: 'set null' }),
   reportedScientificName: text('reported_scientific_name'),
   latitude: doublePrecision('latitude').notNull(),
   longitude: doublePrecision('longitude').notNull(),
@@ -52,6 +56,7 @@ export const plantLocations = pgTable('plant_locations', {
 }, (table) => [
   uniqueIndex('plant_locations_source_external_unique').on(table.source, table.externalId),
   index('plant_locations_species_idx').on(table.speciesId),
+  index('plant_locations_green_area_idx').on(table.greenAreaId),
   index('plant_locations_coordinates_idx').on(table.latitude, table.longitude),
   check('plant_locations_latitude_check', sql`${table.latitude} between -90 and 90`),
   check('plant_locations_longitude_check', sql`${table.longitude} between -180 and 180`),
@@ -173,4 +178,70 @@ export const poiProfiles = pgTable('poi_profiles', {
 }, (table) => [
   uniqueIndex('poi_profiles_poi_language_unique').on(table.poiId, table.language),
   check('poi_profiles_text_check', sql`length(trim(${table.description})) > 0 and length(trim(${table.language})) > 0 and length(trim(${table.sourceUrl})) > 0`),
+])
+
+// Zonas verdes municipales (NM-08): polígonos de la capa «Espais Verds» del
+// geoportal. Una fila por polígono de la fuente (`id_jardin`). `group_slug`
+// reúne los polígonos que el visitante entiende como un solo parque (los 18
+// tramos del Jardín del Turia) y da un identificador estable y legible para
+// enlazar artículos y fichas. `name` es el nombre que se muestra: el curado si
+// la zona está en la lista de curación, o el de la fuente normalizado.
+// La geometría es GeoJSON (Polygon/MultiPolygon, WGS84) en jsonb: sin PostGIS,
+// porque los tests corren en PGlite y el cruce espacial se hace en el import.
+export const greenAreas = pgTable('green_areas', {
+  id: serial('id').primaryKey(),
+  source: text('source').notNull(),
+  externalId: text('external_id').notNull(),
+  name: text('name').notNull(),
+  reportedName: text('reported_name').notNull(),
+  groupSlug: text('group_slug').notNull(),
+  typology: text('typology'),
+  neighborhood: text('neighborhood'),
+  areaM2: doublePrecision('area_m2'),
+  // true: parque o jardín que se pinta en la capa del mapa; false: isleta,
+  // bulevar o acompañamiento viario, que solo sirve para situar ejemplares.
+  featured: boolean('featured').notNull().default(false),
+  geometry: jsonb('geometry').notNull(),
+  minLatitude: doublePrecision('min_latitude').notNull(),
+  maxLatitude: doublePrecision('max_latitude').notNull(),
+  minLongitude: doublePrecision('min_longitude').notNull(),
+  maxLongitude: doublePrecision('max_longitude').notNull(),
+  latitude: doublePrecision('latitude').notNull(),
+  longitude: doublePrecision('longitude').notNull(),
+  sourceUrl: text('source_url').notNull(),
+  importedAt: timestamp('imported_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex('green_areas_source_external_unique').on(table.source, table.externalId),
+  index('green_areas_group_idx').on(table.groupSlug),
+  index('green_areas_bbox_idx').on(table.minLatitude, table.maxLatitude, table.minLongitude, table.maxLongitude),
+  check('green_areas_text_check', sql`length(trim(${table.source})) > 0 and length(trim(${table.externalId})) > 0 and length(trim(${table.name})) > 0 and length(trim(${table.groupSlug})) > 0 and length(trim(${table.sourceUrl})) > 0`),
+  check('green_areas_geometry_check', sql`jsonb_typeof(${table.geometry}) = 'object'`),
+  check('green_areas_bbox_check', sql`${table.minLatitude} <= ${table.maxLatitude} and ${table.minLongitude} <= ${table.maxLongitude} and ${table.latitude} between -90 and 90 and ${table.longitude} between -180 and 180`),
+])
+
+// Contenido editorial de flora y zonas verdes (NM-08), una fila por artículo e
+// idioma. `topic` es la sección temática ('flora', 'parques', 'jardines',
+// 'paisajismo'). `green_area_group` enlaza el artículo con una zona verde por
+// su `group_slug` (texto, sin FK: el grupo no es único en green_areas y el
+// artículo puede sembrarse antes de importar las zonas). Los textos son propios
+// del equipo, redactados a partir de las fuentes que se listan en `sources`
+// (lista de `{name, description, url}`, igual que species_profiles: RNF6).
+export const editorialArticles = pgTable('editorial_articles', {
+  id: serial('id').primaryKey(),
+  slug: text('slug').notNull(),
+  language: text('language').notNull(),
+  topic: text('topic').notNull(),
+  greenAreaGroup: text('green_area_group'),
+  title: text('title').notNull(),
+  summary: text('summary').notNull(),
+  body: text('body').notNull(),
+  sources: jsonb('sources').notNull(),
+  position: integer('position').notNull().default(0),
+}, (table) => [
+  uniqueIndex('editorial_articles_slug_language_unique').on(table.slug, table.language),
+  index('editorial_articles_topic_idx').on(table.topic),
+  index('editorial_articles_group_idx').on(table.greenAreaGroup),
+  check('editorial_articles_text_check', sql`length(trim(${table.slug})) > 0 and length(trim(${table.language})) > 0 and length(trim(${table.title})) > 0 and length(trim(${table.summary})) > 0 and length(trim(${table.body})) > 0`),
+  check('editorial_articles_topic_check', sql`${table.topic} in ('flora', 'parques', 'jardines', 'paisajismo')`),
+  check('editorial_articles_sources_check', sql`jsonb_typeof(${table.sources}) = 'array' and jsonb_array_length(${table.sources}) > 0`),
 ])
