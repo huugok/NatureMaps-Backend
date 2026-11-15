@@ -11,6 +11,11 @@ const BROKEN = [
   ['Ã\u0081rbol pica-pica', 'Árbol pica-pica'],
   ['Ficus matapalo/BenjamÃ­n/Higuera llorona', 'Ficus matapalo/Benjamín/Higuera llorona'],
   ['Limpia tubos llorÃ³n', 'Limpia tubos llorón'],
+  // La «à» pierde el último byte: el espacio duro llega como un espacio normal.
+  ['AcÃ cia de tres espines', 'Acàcia de tres espines'],
+  ['Palmera CanÃ ria', 'Palmera Canària'],
+  ['PlÃ tan', 'Plàtan'],
+  ['AcÃ cia, RobÃ­nia', 'Acàcia, Robínia'],
 ]
 
 for (const [broken, expected] of BROKEN) {

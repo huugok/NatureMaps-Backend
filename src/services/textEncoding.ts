@@ -17,9 +17,13 @@ export function looksMojibake(text: string): boolean {
  */
 export function repairMojibake(text: string): string {
   if (!looksMojibake(text)) return text
-  const bytes = new Uint8Array(text.length)
-  for (let index = 0; index < text.length; index += 1) {
-    const code = text.charCodeAt(index)
+  // La «à» (UTF-8 C3 A0) llega como «Ã» + espacio duro, y la fuente normaliza ese espacio
+  // duro a uno normal («AcÃ cia» por «Acàcia»). Una «Ã» seguida de un espacio normal nunca
+  // aparece en un texto correcto, así que se restituye el byte perdido antes de decodificar.
+  const restored = text.replace(/Ã /g, 'Ã\u00A0')
+  const bytes = new Uint8Array(restored.length)
+  for (let index = 0; index < restored.length; index += 1) {
+    const code = restored.charCodeAt(index)
     if (code > 0xff) return text
     bytes[index] = code
   }
