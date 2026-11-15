@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express'
 import { CatalogError } from '../services/catalogError.js'
 import { getSpeciesDetail, listSpecies } from '../services/speciesCatalog.js'
+import { lookupSpeciesSheet } from '../services/speciesLookup.js'
 import { enrichCatalogSpecies } from '../services/wikipediaImport.js'
 
 function number(value: unknown, fallback: number, min: number, max: number) {
@@ -23,6 +24,17 @@ export async function enrichSpeciesFromTrees(req: Request, res: Response) {
     }
     res.json(await enrichCatalogSpecies(number(req.query.limit, 20, 1, 200),
       number(req.query.afterId, 0, 0, 2_147_483_647), language))
+  } catch (error) { errorResponse(res, error) }
+}
+
+/** POST /species/lookup {name}: ficha de una especie identificada, con el texto de Wikipedia si hace falta. No escribe en la base. */
+export async function lookupSpecies(req: Request, res: Response) {
+  try {
+    const name: unknown = req.body?.name
+    if (typeof name !== 'string' || name.trim() === '' || name.length > 120) {
+      throw new CatalogError(400, 'name debe ser un nombre científico')
+    }
+    res.json(await lookupSpeciesSheet(name, requestedLanguage(req.query.lang)))
   } catch (error) { errorResponse(res, error) }
 }
 

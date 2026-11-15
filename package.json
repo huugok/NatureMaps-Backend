@@ -7,7 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "dev:local": "tsx scripts/dev-local.mjs",
     "build": "tsc",
-    "test": "npm run test:catalog && npm run test:pois && npm run test:profiles && npm run test:zonas-verdes",
+    "test": "npm run test:catalog && npm run test:pois && npm run test:profiles && npm run test:zonas-verdes && npm run test:lookup",
     "test:catalog": "tsx --test tests/catalog.test.mjs",
     "import:arbolado": "tsx src/scripts/import-inventory.ts",
     "import:pois": "tsx src/scripts/import-pois.ts",
@@ -23,7 +23,8 @@
     "db:studio": "drizzle-kit studio",
     "test:pois": "tsx --test tests/pois.test.mjs",
     "test:profiles": "tsx --test tests/poi-profiles.test.mjs",
-    "test:zonas-verdes": "tsx --test tests/green-areas.test.mjs"
+    "test:zonas-verdes": "tsx --test tests/green-areas.test.mjs",
+    "test:lookup": "tsx --test tests/species-lookup.test.mjs"
   },
   "repository": {
     "type": "git",
