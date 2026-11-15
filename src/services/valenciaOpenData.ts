@@ -1,5 +1,6 @@
 import { CatalogError } from './catalogError.js'
 import { toBinomialName } from './taxonomyNames.js'
+import { repairMojibake } from './textEncoding.js'
 
 export const VALENCIA_SOURCE = {
   code: 'VALENCIA_ARBOLADO',
@@ -38,7 +39,8 @@ export function isObject(value: unknown): value is Record<string, unknown> {
 function optionalText(value: unknown): string | null {
   if (value === null || value === undefined) return null
   if (typeof value !== 'string') throw new Error('Invalid text')
-  return value.trim().replace(/\s+/g, ' ') || null
+  // La fuente trae algunos nombres con la codificación rota («CiprÃ©s»): se corrigen al leerlos.
+  return repairMojibake(value.trim().replace(/\s+/g, ' ')) || null
 }
 
 function normalizeFeature(feature: unknown): InventoryRecord {
