@@ -104,3 +104,23 @@ export async function listNearbyTrees(
   const trees = result.rows.map(publicTree)
   return { center: { latitude, longitude }, radius, returned: trees.length, limit, language, trees }
 }
+
+/**
+ * Todos los ejemplares de una zona verde (todos los polígonos de su grupo), paginados.
+ * Es lo que descarga el modo sin conexión (NM-08 descarga offline): a diferencia de
+ * `listNearbyTrees`, no tiene tope de 1000 ni depende de un centro y un radio.
+ * Devuelve null si la zona no existe.
+ */
+export async function listGroupPlants(groupSlug: string, limit: number, offset: number, language: string) {
+  const exists = await db.execute<{ id: number }>(sql`select id from green_areas where group_slug = ${groupSlug} limit 1`)
+  if (exists.rows.length === 0) return null
+  const condition = sql`p.green_area_id in (select id from green_areas where group_slug = ${groupSlug})`
+  const [result, count] = await Promise.all([
+    selectTrees(language, condition, limit, offset),
+    db.execute<{ total: number }>(sql`select count(*)::int as total from plant_locations p where ${condition}`),
+  ])
+  const total = Number(count.rows[0]?.total ?? 0)
+  const plants = result.rows.map(publicTree)
+  return { groupSlug, total, returned: plants.length, limit, offset, language,
+    nextOffset: offset + plants.length < total ? offset + plants.length : null, plants }
+}
