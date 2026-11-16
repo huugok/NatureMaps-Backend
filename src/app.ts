@@ -6,6 +6,8 @@ import { speciesRouter } from './routes/species.js'
 import { sourcesRouter } from './routes/sources.js'
 import { poisRouter } from './routes/pois.js'
 import { routesRouter } from './routes/routes.js'
+import { greenAreasRouter } from './routes/greenAreas.js'
+import { editorialRouter } from './routes/editorial.js'
 
 export const app = express()
 
@@ -17,6 +19,8 @@ app.use('/species', speciesRouter)
 app.use('/sources', sourcesRouter)
 app.use('/pois', poisRouter)
 app.use('/routes', routesRouter)
+app.use('/green-areas', greenAreasRouter)
+app.use('/editorial', editorialRouter)
 
 // Página de prueba para identificar plantas desde el navegador.
 app.get('/probar', (_req, res) => {

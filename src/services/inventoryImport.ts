@@ -2,9 +2,11 @@ import { sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { CatalogError } from './catalogError.js'
 import { fetchValenciaTrees, VALENCIA_SOURCE } from './valenciaOpenData.js'
+import type { InventoryBounds } from './valenciaOpenData.js'
 
-export async function importValenciaInventory(limit: number, offset: number) {
-  const page = await fetchValenciaTrees(limit, offset)
+/** `bounds` recorta la descarga a una zona; el import completo no lo usa. */
+export async function importValenciaInventory(limit: number, offset: number, bounds?: InventoryBounds) {
+  const page = await fetchValenciaTrees(limit, offset, bounds)
   // Momento de la descarga: tras recibir la página y antes de guardarla.
   const downloadedAt = new Date().toISOString()
   const records = page.records.filter((record) => record.isPlant)
