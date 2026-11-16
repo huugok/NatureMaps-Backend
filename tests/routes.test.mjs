@@ -120,6 +120,12 @@ test('Rutas predefinidas: generador, cliente Valhalla y catálogo', async (t) =>
         `distancia: ${route.distanceMeters}`)
       assert.ok(route.durationSeconds > 0)
       assert.ok(route.path.length >= 2)
+      // El centro solo sirve para buscar paradas: la ruta arranca en una real.
+      assert.deepEqual(route.start, {
+        latitude: route.stops[0]?.latitude, longitude: route.stops[0]?.longitude,
+      })
+      assert.ok(Math.abs(route.start.latitude) > 1e-6 || Math.abs(route.start.longitude) > 1e-6,
+        'el inicio no es el centro (0,0)')
       // La geometría cierra en el punto de partida (primera = última).
       assert.ok(Math.abs(route.path[0].latitude - route.path[route.path.length - 1].latitude) < 1e-5)
     })

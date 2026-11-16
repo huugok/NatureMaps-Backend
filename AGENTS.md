@@ -152,8 +152,9 @@ idempotente y adjunta al taxón existente por nombre científico; los textos cur
 Wikipedia con `coalesce` y las fotos siguen en `species_enrichments`),
 `pois` y `poi_profiles` (NM-06) y `routes` (migración `0004_far_payback`): catálogo de rutas
 botánico-culturales predefinidas. Cada fila guarda nombre (único), theme, shape, length_category,
-métricas reales de Valhalla, inicio, descripción, `stops` (jsonb, paradas en orden con kind/id/
-nombre/coords/speciesId) y `path` (jsonb, geometría ya decodificada): la ficha se pinta desde BD sin llamar
+métricas reales de Valhalla, punto de inicio (la primera parada real; el centro de búsqueda es
+solo un parámetro interno del generador), descripción, `stops` (jsonb, paradas en orden con
+kind/id/nombre/coords/speciesId) y `path` (jsonb, geometría ya decodificada): la ficha se pinta desde BD sin llamar
 al motor de rutas en vivo. El generador vive en `src/services/routeGenerator.ts` (`generateRoute`,
 método reutilizable; la seed solo trae las 12 definiciones) y devuelve rutas circulares (anillo de
 paradas repartidas) o lineales (si la zona no da para cerrar el anillo, siempre con la longitud

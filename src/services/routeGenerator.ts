@@ -31,6 +31,9 @@ export interface GenerateRouteOptions {
 
 export interface GeneratedRoute {
   theme: RouteTheme
+  /** Punto real donde empieza la ruta: la primera parada (el centro del
+   * anillo es solo un parámetro de búsqueda, no un punto del mapa). */
+  start: RoutePoint
   shape: RouteShape
   distanceMeters: number
   durationSeconds: number
@@ -433,10 +436,16 @@ export async function generateRoute(options: GenerateRouteOptions): Promise<Gene
       shape = 'lineal'
       stops = pickLinear(candidates, start, target * scale, content, excluded)
     }
+    // La ruta empieza en una parada real. El `start` pedido es solo el centro
+    // desde el que se buscan paradas: puede no ser un punto del mapa y nunca
+    // debe ser el primer waypoint. En el anillo se cierra volviendo a esa
+    // primera parada.
+    const first = stops[0]
+    if (!first) throw new CatalogError(500, 'No hay paradas suficientes para empezar la ruta')
+    const routeStart: RoutePoint = { latitude: first.latitude, longitude: first.longitude }
     const waypoints: ValhallaPoint[] = [
-      { latitude: start.latitude, longitude: start.longitude },
       ...stops.map((stop) => ({ latitude: stop.latitude, longitude: stop.longitude })),
-      ...(shape === 'circular' ? [{ latitude: start.latitude, longitude: start.longitude }] : []),
+      ...(shape === 'circular' ? [routeStart] : []),
     ]
     const routed = await routeChain(waypoints)
     // Un tramo que va y vuelve por la misma calle: se aparta la parada que lo
@@ -449,7 +458,7 @@ export async function generateRoute(options: GenerateRouteOptions): Promise<Gene
         continue
       }
     }
-    const result: GeneratedRoute = { theme: content, shape, ...routed, stops }
+    const result: GeneratedRoute = { theme: content, shape, start: routeStart, ...routed, stops }
     const deviation = Math.abs(routed.distanceMeters - target) / target
     if (best === undefined || deviation < Math.abs(best.distanceMeters - target) / target) best = result
     if (deviation <= 0.15) return best
