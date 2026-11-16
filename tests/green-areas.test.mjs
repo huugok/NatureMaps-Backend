@@ -137,6 +137,37 @@ test('zonas verdes y contenido editorial (NM-08)', async (t) => {
       assert.equal(geoportalCalls, 2)
     })
 
+    await t.test('plantas de una zona: todas las del grupo, paginadas, para la descarga sin conexión', async () => {
+      const hesperides = await request('/green-areas/group/jardin-de-las-hesperides/plants')
+      assert.equal(hesperides.status, 200)
+      assert.equal(hesperides.body.total, 3)
+      assert.equal(hesperides.body.returned, 3)
+      assert.equal(hesperides.body.nextOffset, null)
+      assert.deepEqual(hesperides.body.plants.map((plant) => plant.id).sort(), [naranjo1.plant, naranjo1.plant + 1, jacaranda.plant].sort())
+      const first = hesperides.body.plants[0]
+      assert.equal(first.greenAreaId, await idOf('99120311'))
+      assert.ok(first.displayName && typeof first.latitude === 'number' && typeof first.longitude === 'number')
+
+      const pages = await request('/green-areas/group/jardin-de-las-hesperides/plants?limit=2')
+      assert.equal(pages.body.returned, 2)
+      assert.equal(pages.body.nextOffset, 2)
+      const rest = await request('/green-areas/group/jardin-de-las-hesperides/plants?limit=2&offset=2')
+      assert.equal(rest.body.returned, 1)
+      assert.equal(rest.body.nextOffset, null)
+
+      const turia = await request('/green-areas/group/jardin-del-turia/plants')
+      assert.equal(turia.body.total, 1, 'solo el pino del Turia: no mezcla otras zonas')
+      assert.equal(turia.body.plants[0].id, pino.plant)
+    })
+
+    await t.test('plantas de una zona: valida parámetros y zonas inexistentes', async () => {
+      assert.equal((await request('/green-areas/group/no-existe/plants')).status, 404)
+      for (const path of ['/green-areas/group/No_Valido/plants', '/green-areas/group/jardin-del-turia/plants?limit=0',
+        '/green-areas/group/jardin-del-turia/plants?limit=1001', '/green-areas/group/jardin-del-turia/plants?offset=-1']) {
+        assert.equal((await request(path)).status, 400, path)
+      }
+    })
+
     await t.test('capa del mapa: solo parques y jardines, con contorno y caja', async () => {
       const layer = await request('/green-areas')
       assert.equal(layer.status, 200)

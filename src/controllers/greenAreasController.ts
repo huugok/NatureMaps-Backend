@@ -4,6 +4,7 @@ import { CatalogError } from '../services/catalogError.js'
 import { getGreenArea, getGreenAreaGroup, greenAreaAt, listGreenAreas } from '../services/greenAreaCatalog.js'
 import type { AreaBounds } from '../services/greenAreaCatalog.js'
 import { importValenciaGreenAreas } from '../services/greenAreaImport.js'
+import { listGroupPlants } from '../services/treeCatalog.js'
 
 // Zonas verdes (NM-08): capa del mapa, zona de un punto y ficha de zona.
 
@@ -56,6 +57,17 @@ export async function greenAreaGroupDetail(req: Request, res: Response) {
     const detail = await getGreenAreaGroup(groupSlug(req.params.slug), language(req.query.lang))
     if (!detail) { res.status(404).json({ error: 'Zona verde no encontrada' }); return }
     res.json(detail)
+  } catch (error) { sendError(res, error) }
+}
+
+/** Ejemplares de una zona verde, paginados: los descarga el modo sin conexión. */
+export async function greenAreaGroupPlants(req: Request, res: Response) {
+  try {
+    const limit = integer(req.query.limit, 500, 1, 1000, 'limit')
+    const offset = integer(req.query.offset, 0, 0, 10_000_000, 'offset')
+    const result = await listGroupPlants(groupSlug(req.params.slug), limit, offset, language(req.query.lang))
+    if (!result) { res.status(404).json({ error: 'Zona verde no encontrada' }); return }
+    res.json(result)
   } catch (error) { sendError(res, error) }
 }
 
