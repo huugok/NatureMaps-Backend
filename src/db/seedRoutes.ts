@@ -76,19 +76,32 @@ const DEFINITIONS: RouteDefinition[] = [
     description: 'La ruta recta por la avenida de la Marina hasta el mar, entre el arbolado urbano y las palmeras de la playa.' },
 ]
 
-async function seedRoutes() {
-  // Las 9 rutas se generan de tres en tres: cada una pide muchos tramos a
-  // Valhalla y en serie la seed tarda media hora.
-  const results: string[] = []
-  const queue = [...DEFINITIONS]
-  const workers = Array.from({ length: 3 }, async () => {
-    for (let definition = queue.shift(); definition; definition = queue.shift()) {
-      const generated = await generateRoute({
+async function generateWithRetry(definition: RouteDefinition) {
+  for (let intento = 0; intento < 3; intento++) {
+    try {
+      return await generateRoute({
         start: definition.start,
         targetDistance: definition.targetDistance,
         content: definition.theme,
         ...(definition.shape ? { shape: definition.shape } : {}),
       })
+    } catch (error) {
+      if (intento === 2) throw error
+      // El servidor demo devuelve 502/429 de vez en cuando.
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+    }
+  }
+  throw new Error('No se pudo generar la ruta')
+}
+
+async function seedRoutes() {
+  // Las 12 rutas se generan de tres en tres: cada una pide muchos tramos a
+  // Valhalla y en serie la seed tarda media hora.
+  const results: string[] = []
+  const queue = [...DEFINITIONS]
+  const workers = Array.from({ length: 3 }, async () => {
+    for (let definition = queue.shift(); definition; definition = queue.shift()) {
+      const generated = await generateWithRetry(definition)
       const values = {
         name: definition.name,
         theme: generated.theme,
