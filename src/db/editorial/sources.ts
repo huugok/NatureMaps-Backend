@@ -213,3 +213,13 @@ export const CV_HESPERIDES: SourceDefinition = {
     en: 'Garden of the Hesperides: a design based on the myth, with cypress walls',
   },
 }
+
+export const SPAIN_INFO_SEDA: SourceDefinition = {
+  name: 'Turespaña (spain.info)',
+  url: 'https://www.spain.info/es/descubrir-espana/valencia-ruta-seda/',
+  description: {
+    es: 'Ruta de la Seda en Valencia: historia, patrimonio y tradiciones',
+    ca: 'Ruta de la Seda a València: història, patrimoni i tradicions',
+    en: 'Silk Route in Valencia: history, heritage and traditions',
+  },
+}

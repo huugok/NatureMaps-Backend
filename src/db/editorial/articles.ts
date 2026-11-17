@@ -25,6 +25,7 @@ import {
   VIA_HESPERIDES,
   VISIT_MONFORTE,
   VISIT_VIVEROS,
+  SPAIN_INFO_SEDA,
 } from './sources.js'
 
 export interface ArticleMeta {
@@ -101,4 +102,11 @@ export const ARTICLE_META: ArticleMeta[] = [
     position: 40,
     sources: [AJUNTAMENT_GUIA, ESPACIOS_VERDES],
   },
+  {
+    slug: 'valencia-y-la-seda',
+    topic: 'historia',
+    greenAreaGroup: null,
+    position: 50,
+    sources: [SPAIN_INFO_SEDA],
+  }
 ]

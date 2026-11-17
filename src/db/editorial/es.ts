@@ -85,4 +85,11 @@ export const ES: Record<string, ArticleText> = {
       'El contorno de cada zona verde que ves en el mapa procede de los datos abiertos del Ayuntamiento.',
     ].join('\n\n'),
   },
+  'valencia-y-la-seda': {
+    title: 'València y la seda',
+    summary: 'La historia de la seda en València, su patrimonio y tradiciones asociadas.',
+    body: [
+      'El barrio de Velluters se desarrolló gracias a la industria de la seda. La Lonja recuerda la importancia de su comercio, mientras que los trajes tradicionales mantienen este tejido presente en las fiestas de la ciudad.',
+      ].join('\n\n'),
+  },
 }

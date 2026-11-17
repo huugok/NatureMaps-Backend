@@ -87,4 +87,11 @@ export const EN: Record<string, ArticleText> = {
       'The outline of every green space you see on the map comes from the city council’s open data.',
     ].join('\n\n'),
   },
+  'valencia-y-la-seda': {
+    title: 'València and silk',
+    summary: 'Silk connects València’s commercial history with its traditions.',
+    body: [
+      'The Velluters neighbourhood developed through the silk industry. La Lonja reflects the importance of silk trading, while traditional clothing keeps the fabric present in the city’s celebrations.',
+    ].join('\n\n'),
+  }
 }

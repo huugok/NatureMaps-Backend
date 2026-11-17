@@ -6,7 +6,7 @@ import { db } from '../db/index.js'
 // vez por idioma; la lectura elige el idioma pedido y, si falta, es → ca → en,
 // y devuelve en `language` el idioma real para que la pantalla pueda avisarlo.
 
-export const EDITORIAL_TOPICS = ['flora', 'parques', 'jardines', 'paisajismo'] as const
+export const EDITORIAL_TOPICS = ['flora', 'parques', 'jardines', 'paisajismo', 'historia'] as const
 export type EditorialTopic = typeof EDITORIAL_TOPICS[number]
 
 export interface EditorialSource { name: string, description: string, url: string }

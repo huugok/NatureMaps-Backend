@@ -85,4 +85,11 @@ export const VA: Record<string, ArticleText> = {
       'El contorn de cada zona verda que veus en el mapa procedix de les dades obertes de l’Ajuntament.',
     ].join('\n\n'),
   },
+  'valencia-y-la-seda': {
+    title: 'València i la seda',
+    summary: 'La seda connecta la història comercial de València amb les seues tradicions.',
+    body: [
+      'El barri de Velluters es va desenvolupar gràcies a la indústria de la seda. La Llotja recorda la importància del seu comerç, mentre que els vestits tradicionals mantenen este teixit present en les festes de la ciutat.',
+    ].join('\n\n'),
+  },
 }
