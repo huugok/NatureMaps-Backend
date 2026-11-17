@@ -7,9 +7,10 @@
     "dev": "tsx watch src/index.ts",
     "dev:local": "tsx scripts/dev-local.mjs",
     "build": "tsc",
-    "test": "npm run test:catalog && npm run test:pois && npm run test:profiles && npm run test:routes && npm run test:zonas-verdes",
+    "test": "npm run test:catalog && npm run test:pois && npm run test:profiles && npm run test:routes && npm run test:zonas-verdes && npm run test:lookup && npm run test:nombres",
     "test:catalog": "tsx --test tests/catalog.test.mjs",
     "import:arbolado": "tsx src/scripts/import-inventory.ts",
+    "repair:nombres": "tsx src/scripts/repair-names.ts",
     "import:pois": "tsx src/scripts/import-pois.ts",
     "import:zonas-verdes": "tsx src/scripts/import-green-areas.ts",
     "start": "node dist/index.js",
@@ -25,7 +26,9 @@
     "test:pois": "tsx --test tests/pois.test.mjs",
     "test:profiles": "tsx --test tests/poi-profiles.test.mjs",
     "test:routes": "tsx --test tests/routes.test.mjs",
-    "test:zonas-verdes": "tsx --test tests/green-areas.test.mjs"
+    "test:zonas-verdes": "tsx --test tests/green-areas.test.mjs",
+    "test:nombres": "tsx --test tests/name-encoding.test.mjs",
+    "test:lookup": "tsx --test tests/species-lookup.test.mjs"
   },
   "repository": {
     "type": "git",
