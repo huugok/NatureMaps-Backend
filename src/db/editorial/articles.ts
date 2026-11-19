@@ -1,4 +1,4 @@
-// Estructura del contenido editorial de flora y zonas verdes (NM-08): qué
+// Estructura del contenido editorial de flora, zonas verdes y cultura: qué
 // artículos existen, en qué sección van, a qué zona verde se refieren y de qué
 // fuentes salen. Los textos están aparte, uno por idioma (`es.ts`, `va.ts`,
 // `en.ts`), para que una traducción no pueda cambiar el tema, el enlace a la
@@ -10,6 +10,7 @@ import {
   AJUNTAMENT_GUIA,
   CATALOGO_VIVEROS,
   CVC_GLORIETA,
+  CV_FALLAS,
   CV_HESPERIDES,
   ESPACIOS_VERDES,
   FICUS_MONUMENTALES,
@@ -19,6 +20,8 @@ import {
   INVENTARIO_ARBOLADO,
   PLANOL_MONFORTE,
   SPAIN_INFO_MONFORTE,
+  SPAIN_INFO_CIUDAD,
+  SPAIN_INFO_GASTRONOMIA,
   UV_BOTANIC,
   VALENCIA_BONITA_TURIA,
   VIA_CABECERA,
@@ -108,5 +111,26 @@ export const ARTICLE_META: ArticleMeta[] = [
     greenAreaGroup: null,
     position: 50,
     sources: [SPAIN_INFO_SEDA],
-  }
+  },
+  {
+    slug: 'arquitectura-y-vida-urbana',
+    topic: 'entorno-urbano',
+    greenAreaGroup: null,
+    position: 60,
+    sources: [SPAIN_INFO_CIUDAD],
+  },
+  {
+    slug: 'fallas-tradicion-y-barrio',
+    topic: 'tradiciones',
+    greenAreaGroup: null,
+    position: 70,
+    sources: [CV_FALLAS],
+  },
+  {
+    slug: 'arroces-y-horchata',
+    topic: 'gastronomia',
+    greenAreaGroup: null,
+    position: 80,
+    sources: [SPAIN_INFO_GASTRONOMIA],
+  },
 ]

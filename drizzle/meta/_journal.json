@@ -43,6 +43,13 @@
       "when": 1794952397829,
       "tag": "0005_culture_editorial",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795099434273,
+      "tag": "0006_culture_topics",
+      "breakpoints": true
     }
   ]
 }

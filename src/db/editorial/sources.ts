@@ -1,4 +1,4 @@
-// Fuentes del contenido editorial de flora y zonas verdes (NM-08).
+// Fuentes del contenido editorial de flora, zonas verdes y cultura de València.
 //
 // Una fuente se declara una sola vez, con su nombre y su URL comunes y la
 // descripción en los tres idiomas: así una traducción no puede quedarse con
@@ -20,7 +20,7 @@ export interface SourceDefinition {
   consulted?: Localized
 }
 
-/** Fecha de consulta de todas las fuentes; se añade al final de cada descripción. */
+/** Fecha de consulta por defecto; cada fuente puede declarar la suya en consulted. */
 const CONSULTED: Localized = {
   es: 'Consulta 12/11/2026',
   ca: 'Consulta 12/11/2026',
@@ -227,5 +227,50 @@ export const SPAIN_INFO_SEDA: SourceDefinition = {
     es: 'Consulta 17/11/2026',
     ca: 'Consulta 17/11/2026',
     en: 'Retrieved 17/11/2026',
+  },
+}
+
+export const SPAIN_INFO_CIUDAD: SourceDefinition = {
+  name: 'Turespaña (spain.info)',
+  url: 'https://www.spain.info/es/destino/valencia/',
+  description: {
+    es: 'Centro histórico y arquitectura contemporánea de València',
+    ca: 'Centre històric i arquitectura contemporània de València',
+    en: 'València’s historic centre and contemporary architecture',
+  },
+  consulted: {
+    es: 'Consulta 19/11/2026',
+    ca: 'Consulta 19/11/2026',
+    en: 'Retrieved 19/11/2026',
+  },
+}
+
+export const CV_FALLAS: SourceDefinition = {
+  name: 'Comunitat Valenciana – Turisme',
+  url: 'https://www.comunitatvalenciana.com/es/fiestas/fallas',
+  description: {
+    es: 'Fallas: comisiones, monumentos y tradición festiva',
+    ca: 'Falles: comissions, monuments i tradició festiva',
+    en: 'Fallas: neighbourhood associations, monuments and festive traditions',
+  },
+  consulted: {
+    es: 'Consulta 19/11/2026',
+    ca: 'Consulta 19/11/2026',
+    en: 'Retrieved 19/11/2026',
+  },
+}
+
+export const SPAIN_INFO_GASTRONOMIA: SourceDefinition = {
+  name: 'Turespaña (spain.info)',
+  url: 'https://www.spain.info/es/gastronomia/cocina-comunidad-valenciana/',
+  description: {
+    es: 'Cocina valenciana: arroces y horchata de chufa',
+    ca: 'Cuina valenciana: arrossos i orxata de xufa',
+    en: 'Valencian cuisine: rice dishes and tiger nut horchata',
+  },
+  consulted: {
+    es: 'Consulta 19/11/2026',
+    ca: 'Consulta 19/11/2026',
+    en: 'Retrieved 19/11/2026',
   },
 }
