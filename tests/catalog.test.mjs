@@ -438,6 +438,11 @@ test('catalog import and HTTP API with isolated PostgreSQL', async (t) => {
         assert.equal(propera.commonNameLanguage, 'ca')
         assert.equal(propera.displayName, 'Planta propera')
 
+        const all = (await request('/trees/nearby?lat=39.4779&lon=-0.3778&radius=1000')).body
+        assert.equal(all.limit, null)
+        assert.ok(all.returned >= mine.length, 'sin limit devuelve todas las del radio')
+        for (const tree of all.trees) assert.ok(tree.distance <= 1000)
+
         const limited = (await request('/trees/nearby?lat=39.4779&lon=-0.3778&radius=1000&limit=2')).body
         assert.equal(limited.returned, 2)
         assert.ok(limited.trees[0].distance <= limited.trees[1].distance)

@@ -79,7 +79,7 @@ export async function listNearbyTrees(
   latitude: number,
   longitude: number,
   radius: number,
-  limit: number,
+  limit: number | null,
   language: string,
 ) {
   const metersPerDegree = 111_320
@@ -99,7 +99,7 @@ export async function listNearbyTrees(
       and p.longitude between ${longitude - radius / (metersPerDegree * cosLatitude)} and ${longitude + radius / (metersPerDegree * cosLatitude)}
       and ${distance} <= ${radius}::double precision
     order by ${distance} asc
-    limit ${limit}
+    ${limit === null ? sql`` : sql`limit ${limit}`}
   `)
   const trees = result.rows.map(publicTree)
   return { center: { latitude, longitude }, radius, returned: trees.length, limit, language, trees }
