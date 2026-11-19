@@ -17,6 +17,7 @@ export interface SourceDefinition {
   name: string
   url: string
   description: Localized
+  consulted?: Localized
 }
 
 /** Fecha de consulta de todas las fuentes; se añade al final de cada descripción. */
@@ -29,7 +30,7 @@ const CONSULTED: Localized = {
 export function sourceFor(definition: SourceDefinition, language: EditorialLanguage): EditorialSource {
   return {
     name: definition.name,
-    description: `${definition.description[language]} · ${CONSULTED[language]}`,
+    description: `${definition.description[language]} · ${definition.consulted?.[language] ?? CONSULTED[language]}`,
     url: definition.url,
   }
 }
@@ -221,5 +222,10 @@ export const SPAIN_INFO_SEDA: SourceDefinition = {
     es: 'Ruta de la Seda en Valencia: historia, patrimonio y tradiciones',
     ca: 'Ruta de la Seda a València: història, patrimoni i tradicions',
     en: 'Silk Route in Valencia: history, heritage and traditions',
+  },
+  consulted: {
+    es: 'Consulta 17/11/2026',
+    ca: 'Consulta 17/11/2026',
+    en: 'Retrieved 17/11/2026',
   },
 }
