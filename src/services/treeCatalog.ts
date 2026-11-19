@@ -81,15 +81,17 @@ export async function listNearbyTrees(
   radius: number,
   limit: number | null,
   language: string,
+  offset = 0,
 ) {
   const metersPerDegree = 111_320
   const cosLatitude = Math.max(Math.cos((latitude * Math.PI) / 180), 0.01)
   const distance = distanceMeters(latitude, longitude)
-  const result = await db.execute<TreeRow & { distance: number }>(sql`
+  const result = await db.execute<TreeRow & { distance: number, total: string | number }>(sql`
     select p.id, p.species_id as "speciesId", s.scientific_name as "scientificName",
       p.reported_scientific_name as "reportedScientificName", n.name as "commonName",
       n.language as "commonNameLanguage", p.latitude, p.longitude, p.source, p.external_id as "externalId",
-      p.green_area_id as "greenAreaId", round(${distance}::numeric)::int as distance
+      p.green_area_id as "greenAreaId", round(${distance}::numeric)::int as distance,
+      count(*) over () as "total"
     from plant_locations p left join species s on s.id = p.species_id
     left join lateral (
       select name, language from plant_names where plant_location_id = p.id and language = any(${nameLanguageOrder(language)})
@@ -99,10 +101,13 @@ export async function listNearbyTrees(
       and p.longitude between ${longitude - radius / (metersPerDegree * cosLatitude)} and ${longitude + radius / (metersPerDegree * cosLatitude)}
       and ${distance} <= ${radius}::double precision
     order by ${distance} asc
-    ${limit === null ? sql`` : sql`limit ${limit}`}
+    ${limit === null ? sql`` : sql`limit ${limit} offset ${offset}`}
   `)
   const trees = result.rows.map(publicTree)
-  return { center: { latitude, longitude }, radius, returned: trees.length, limit, language, trees }
+  return {
+    center: { latitude, longitude }, radius, returned: trees.length,
+    total: Number(result.rows[0]?.total ?? trees.length), limit, language, trees,
+  }
 }
 
 /**
