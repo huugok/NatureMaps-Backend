@@ -1,5 +1,9 @@
 # Nature MAPS — Backend
 
+Descarga de rutas: `GET /routes/:id/offline?lang=es|va|en` reúne geometría,
+paradas, fichas y créditos de imágenes. `npm run test:routes:offline` comprueba
+este contrato con PGlite, sin credenciales ni llamadas a APIs públicas.
+
 API Express + TypeScript, PostgreSQL (Neon) y Drizzle ORM para un catálogo botánico de Valencia.
 Guarda plantas con especie, nombres por idioma, coordenadas e identificador; importa inventario
 municipal y conserva el enriquecimiento Wikipedia y la identificación Pl@ntNet.

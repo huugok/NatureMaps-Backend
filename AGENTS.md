@@ -71,6 +71,7 @@ npm run test:catalog   # Node Test Runner + tsx + PGlite; sin .env ni servicios 
 npm run test:pois      # suite de POIs (mismo harness PGlite)
 npm run test:profiles  # informe de curaduría (formato del `--dry-run`, sin base)
 npm run test:routes    # suite de rutas (generador con Valhalla simulado + catálogo)
+npm run test:routes:offline # paquete offline de rutas; PGlite, sin credenciales
 npm start              # node dist/index.js
 
 npm run db:generate    # migraciones SQL desde src/db/schema.ts -> drizzle/
@@ -306,6 +307,12 @@ configuración de protección y el versionado están en `docs/agents/git-workflo
   dependencia de la rama eliminada `explore_open_data`.
 
 ## Agent skills
+
+### Descarga de rutas
+
+`GET /routes/:id/offline?lang=` reúne recorrido, paradas, fichas, procedencia y
+créditos. Es una lectura sin llamadas externas ni escrituras. `va` se resuelve
+como `ca`; `npm run test:routes:offline` prueba el contrato sobre PGlite.
 
 ### Issue tracker
 
