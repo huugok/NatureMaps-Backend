@@ -19,6 +19,7 @@ integración Pl@ntNet de `main`. Las fuentes futuras son contexto, no funcionali
 | `poi_profiles` | Texto de la ficha del POI por idioma (extracto de Wikipedia con licencia, hasta que NM-09 traiga contenido propio). |
 | `routes` | Catálogo de rutas botánico-culturales predefinidas (migración `0004_far_payback`): nombre único, tema (`botanica`/`cultural`/`mixta`), forma (`circular`/`lineal`), categoría de longitud (`corta`/`media`/`larga`), distancia y duración medidas por Valhalla, punto de inicio, descripción, `stops` (jsonb, paradas en orden con kind/id/nombre/coords/`speciesId`) y `path` (jsonb, geometría ya decodificada). La ficha se pinta desde BD sin llamar al motor de rutas. El `speciesId` de la parada (planta) permite abrir su ficha real desde el frontend. |
 | `data_sources` | Una fila por fuente (`code` = `source` de `species`/`plant_locations`, sin FK): organismo, nombre, URL, licencia y su URL, atribución, logo opcional y `last_downloaded_at`. Se crea/actualiza en la misma transacción que cada importación. |
+| `offline_maps` | Un paquete PMTiles por código (`valencia`), con archivo base64, tamaño binario, SHA-256, cobertura WGS84, zoom, URL de origen y fecha. Migración incremental `0006`; importación explícita e idempotente. Los clientes comparten una copia local entre rutas. |
 
 `users` es la séptima tabla, conservada del scaffold. No se añaden tablas de observaciones que
 todavía no utiliza ningún flujo. Pl@ntNet identifica fotografías; no persiste resultados.

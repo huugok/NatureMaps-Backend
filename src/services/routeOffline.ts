@@ -4,12 +4,18 @@ import { getTree } from './treeCatalog.js'
 import { getPoi } from './poiCatalog.js'
 import { getSpeciesDetail } from './speciesCatalog.js'
 import { CatalogError } from './catalogError.js'
+import { getOfflineMap, mapCovers } from './offlineMaps.js'
 
 /** Un paquete de lectura: nunca genera rutas, enriquece Wikipedia ni descarga
  * imágenes en el servidor. Conserva las licencias y el idioma real de cada ficha. */
 export async function getRouteOffline(id: number, language: string) {
   const route = await getRoute(id)
   if (!route) return null
+  const map = await getOfflineMap()
+  if (!map) throw new CatalogError(503, 'El mapa sin conexión aún no está preparado')
+  if (!mapCovers(map.bounds, [route.start, ...route.path, ...route.stops])) {
+    throw new CatalogError(409, 'La ruta queda fuera del mapa sin conexión disponible')
+  }
   const species = new Map<number, Awaited<ReturnType<typeof getSpeciesDetail>>>()
   const stops = []
   // Secuencial y deduplicado: evita una ráfaga de consultas en Neon.
@@ -40,7 +46,8 @@ export async function getRouteOffline(id: number, language: string) {
     }
   }
   const content = {
-    schemaVersion: 1 as const,
+    schemaVersion: 2 as const,
+    map,
     language,
     route,
     stops,

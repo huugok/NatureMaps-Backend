@@ -313,6 +313,11 @@ configuración de protección y el versionado están en `docs/agents/git-workflo
 `GET /routes/:id/offline?lang=` reúne recorrido, paradas, fichas, procedencia y
 créditos. Es una lectura sin llamadas externas ni escrituras. `va` se resuelve
 como `ca`; `npm run test:routes:offline` prueba el contrato sobre PGlite.
+`schemaVersion: 2` exige un mapa registrado que cubra toda la geometría; 503 si
+falta y 409 si no cubre la ruta. `offline_maps` (`0006`) conserva un PMTiles
+vectorial de València en base64 (máximo 32 MiB binarios), cobertura, fuente y
+SHA-256. `npm run import:mapa -- --file=... --source=... [--check]` lo importa
+de forma idempotente. No subir archivos `.pmtiles` al repositorio.
 
 ### Issue tracker
 

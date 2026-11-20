@@ -1,8 +1,16 @@
 # Nature MAPS — Backend
 
 Descarga de rutas: `GET /routes/:id/offline?lang=es|va|en` reúne geometría,
-paradas, fichas y créditos de imágenes. `npm run test:routes:offline` comprueba
+paradas, fichas, créditos de imágenes y el mapa Protomaps (`schemaVersion: 2`).
+`npm run test:routes:offline` comprueba
 este contrato con PGlite, sin credenciales ni llamadas a APIs públicas.
+
+El mapa de València se guarda una vez en `offline_maps` (migración `0006`),
+con cobertura, procedencia y SHA-256. Se sirve por `GET /offline-maps/valencia`
+y por la URL versionada que devuelve ese endpoint (admite HTTP Range). Para
+importar o actualizar un archivo PMTiles preparado con `pmtiles extract`:
+`npm run import:mapa -- --file=valencia.pmtiles --source=https://build.protomaps.com/FECHA.pmtiles`.
+Con `--check` valida el archivo sin escribir. El archivo cartográfico no se commitea.
 
 API Express + TypeScript, PostgreSQL (Neon) y Drizzle ORM para un catálogo botánico de Valencia.
 Guarda plantas con especie, nombres por idioma, coordenadas e identificador; importa inventario
