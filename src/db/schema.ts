@@ -9,6 +9,25 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
+// Paquete cartográfico descargable. El archivo pequeño de València se guarda
+// una vez en Neon; el navegador conserva su propia copia para usarla sin red.
+export const offlineMaps = pgTable('offline_maps', {
+  code: text('code').primaryKey(),
+  sha256: text('sha256').notNull(),
+  byteLength: integer('byte_length').notNull(),
+  bounds: jsonb('bounds').$type<[number, number, number, number]>().notNull(),
+  minZoom: integer('min_zoom').notNull(),
+  maxZoom: integer('max_zoom').notNull(),
+  sourceUrl: text('source_url').notNull(),
+  archiveBase64: text('archive_base64').notNull(),
+  importedAt: timestamp('imported_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  check('offline_maps_size_check', sql`${table.byteLength} between 127 and 33554432`),
+  check('offline_maps_zoom_check', sql`${table.minZoom} >= 0 and ${table.maxZoom} between ${table.minZoom} and 22`),
+  check('offline_maps_hash_check', sql`${table.sha256} ~ '^[a-f0-9]{64}$'`),
+  check('offline_maps_bounds_check', sql`jsonb_typeof(${table.bounds}) = 'array' and jsonb_array_length(${table.bounds}) = 4`),
+])
+
 // Fuente externa de datos: quién la publica, con qué licencia y cuándo se descargó por última vez.
 // `code` es el mismo valor que guardan species.source y plant_locations.source (texto, sin clave
 // foránea porque esas columnas ya existen como texto libre). Una fila por fuente, no por descarga.
@@ -159,6 +178,57 @@ export const pois = pgTable('pois', {
   check('pois_longitude_check', sql`${table.longitude} between -180 and 180`),
   check('pois_text_check', sql`length(trim(${table.source})) > 0 and length(trim(${table.externalId})) > 0 and length(trim(${table.name})) > 0 and length(trim(${table.category})) > 0 and length(trim(${table.sourceUrl})) > 0`),
   check('pois_image_check', sql`${table.imageUrl} is null or (${table.imageSourceUrl} is not null and ${table.imageAuthor} is not null and ${table.imageLicense} is not null and ${table.imageLicenseUrl} is not null and ${table.imageAttribution} is not null)`),
+])
+
+// Catálogo de rutas botánico-culturales predefinidas. Cada fila es una ruta
+// calculada una vez con Valhalla (UT de rutas) y guardada tal cual: la ficha la
+// pinta sin volver a llamar al motor de rutas. `theme` es el contenido de las
+// paradas y `shape` la forma que quedó el recorrido (circular o lineal cuando
+// la zona no daba para cerrar el anillo).
+export type RouteStopKind = 'planta' | 'poi'
+
+export type RouteStop = {
+  kind: RouteStopKind
+  id: number
+  name: string
+  latitude: number
+  longitude: number
+  /** Especie del catálogo cuando la parada es una planta identificada; null en
+   * POIs y plantas sin enlazar. Permite abrir su ficha real desde el mapa. */
+  speciesId: number | null
+}
+
+export type RoutePoint = { latitude: number, longitude: number }
+
+export const routes = pgTable('routes', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  // Contenido de las paradas: botánica (plantas), cultural (POIs) o mixta.
+  theme: text('theme').notNull(),
+  // Forma del recorrido: circular (anillo cerrado) o lineal (dirección general).
+  shape: text('shape').notNull(),
+  // Categoría de longitud objetivo: corta (1–3 km), media (4–7 km), larga (8+ km).
+  lengthCategory: text('length_category').notNull(),
+  // Distancia y duración reales medidas por Valhalla, no estimadas.
+  distanceMeters: integer('distance_meters').notNull(),
+  durationSeconds: integer('duration_seconds').notNull(),
+  startLatitude: doublePrecision('start_latitude').notNull(),
+  startLongitude: doublePrecision('start_longitude').notNull(),
+  description: text('description').notNull(),
+  // Paradas en el orden del recorrido; el punto de partida va aparte.
+  stops: jsonb('stops').$type<RouteStop[]>().notNull(),
+  // Geometría completa del recorrido (ya decodificada de la polilínea de Valhalla).
+  path: jsonb('path').$type<RoutePoint[]>().notNull(),
+  generatedAt: timestamp('generated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex('routes_name_unique').on(table.name),
+  check('routes_theme_check', sql`${table.theme} in ('botanica', 'cultural', 'mixta')`),
+  check('routes_shape_check', sql`${table.shape} in ('circular', 'lineal')`),
+  check('routes_length_category_check', sql`${table.lengthCategory} in ('corta', 'media', 'larga')`),
+  check('routes_text_check', sql`length(trim(${table.name})) > 0 and length(trim(${table.description})) > 0`),
+  check('routes_values_check', sql`${table.distanceMeters} > 0 and ${table.durationSeconds} > 0`),
+  check('routes_json_check', sql`jsonb_typeof(${table.stops}) = 'array' and jsonb_typeof(${table.path}) = 'array' and jsonb_array_length(${table.path}) >= 2`),
+  check('routes_coordinates_check', sql`${table.startLatitude} between -90 and 90 and ${table.startLongitude} between -180 and 180`),
 ])
 
 // Contenido curado de la ficha del POI (NM-06), una fila por POI e idioma. Se
