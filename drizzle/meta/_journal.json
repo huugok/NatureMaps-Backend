@@ -43,6 +43,13 @@
       "when": 1794520475642,
       "tag": "0005_green_areas_editorial",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795283122102,
+      "tag": "0006_optimal_polaris",
+      "breakpoints": true
     }
   ]
 }

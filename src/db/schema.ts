@@ -293,6 +293,6 @@ export const editorialArticles = pgTable('editorial_articles', {
   index('editorial_articles_topic_idx').on(table.topic),
   index('editorial_articles_group_idx').on(table.greenAreaGroup),
   check('editorial_articles_text_check', sql`length(trim(${table.slug})) > 0 and length(trim(${table.language})) > 0 and length(trim(${table.title})) > 0 and length(trim(${table.summary})) > 0 and length(trim(${table.body})) > 0`),
-  check('editorial_articles_topic_check', sql`${table.topic} in ('flora', 'parques', 'jardines', 'paisajismo')`),
+  check('editorial_articles_topic_check', sql`${table.topic} in ('flora', 'parques', 'jardines', 'paisajismo', 'historia', 'entorno-urbano', 'tradiciones', 'gastronomia')`),
   check('editorial_articles_sources_check', sql`jsonb_typeof(${table.sources}) = 'array' and jsonb_array_length(${table.sources}) > 0`),
 ])

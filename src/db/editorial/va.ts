@@ -1,4 +1,4 @@
-// Textos del contenido editorial en valencià (NM-08). Traducció dels textos
+// Textos del contingut editorial en valencià: flora, zones verdes i cultura. Traducció dels textos
 // de `es.ts`, amb les mateixes fonts i les mateixes dades: si una xifra canvia
 // en castellà, ha de canviar ací. L'estructura (secció, zona verda, fonts)
 // viu en `articles.ts`.
@@ -83,6 +83,37 @@ export const VA: Record<string, ArticleText> = {
       'Durant segles el gran jardí de València va ser l’Horta, que l’envoltava com un tapís de cultius i séquies. Els jardins públics van arribar al segle XIX, amb passejos arbrats com la Glorieta i jardins com el Parterre o Monforte.',
       'La riuada de 1957 va canviar l’escala. En desviar el riu, la ciutat va guanyar un corredor verd continu, el Jardí del Túria, i amb ell una manera nova d’entendre els seus parcs: connectats entre si i pensats per a recórrer-los. El Parc de Capçalera, que recrea un bosc de ribera, i el Jardí de les Hespèrides, que reinterpreta l’antic cultiu ornamental de cítrics, són dos exemples recents de jardins que conten alguna cosa del lloc on estan.',
       'El contorn de cada zona verda que veus en el mapa procedix de les dades obertes de l’Ajuntament.',
+    ].join('\n\n'),
+  },
+  'valencia-y-la-seda': {
+    title: 'València i la seda',
+    summary: 'La seda connecta la història comercial de València amb les seues tradicions.',
+    body: [
+      'El barri de Velluters es va desenvolupar gràcies a la indústria de la seda. La Llotja recorda la importància del seu comerç, mentre que els vestits tradicionals mantenen este teixit present en les festes de la ciutat.',
+    ].join('\n\n'),
+  },
+  'arquitectura-y-vida-urbana': {
+    title: 'Arquitectura i vida urbana de València',
+    summary: 'Del centre històric a l’arquitectura contemporània.',
+    body: [
+      'El centre de València reunix la Catedral, la Llotja de la Seda i el Mercat Central modernista.',
+      'La Ciutat de les Arts i les Ciències oferix un contrast contemporani amb eixe paisatge històric.',
+    ].join('\n\n'),
+  },
+  'fallas-tradicion-y-barrio': {
+    title: 'Falles: tradició de barri',
+    summary: 'Una celebració de barri entre art, música i tradició.',
+    body: [
+      'Les comissions falleres reunixen veïns i amics per a organitzar celebracions als seus barris. Els seus monuments conten històries satíriques mitjançant figures anomenades ninots.',
+      'La música i la indumentària valenciana acompanyen una festa construïda col·lectivament als carrers.',
+    ].join('\n\n'),
+  },
+  'arroces-y-horchata': {
+    title: 'Arrossos i orxata',
+    summary: 'Arrossos i una beguda que identifiquen la cuina valenciana.',
+    body: [
+      'La cuina valenciana oferix arrossos com la paella, l’arròs al forn i l’arròs a banda.',
+      'L’orxata de xufa, acompanyada de fartons, és una altra expressió de la seua tradició gastronòmica.',
     ].join('\n\n'),
   },
 }
