@@ -50,6 +50,13 @@
       "when": 1795283122102,
       "tag": "0006_optimal_polaris",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795288857044,
+      "tag": "0007_flowering_periods",
+      "breakpoints": true
     }
   ]
 }
