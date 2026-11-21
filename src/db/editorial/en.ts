@@ -1,4 +1,4 @@
-// Editorial content in English (NM-08). A translation of the Spanish texts in
+// Editorial content in English: flora, green spaces and culture. A translation of the Spanish texts in
 // `es.ts`, with the same sources and the same figures: if a number changes in
 // Spanish it has to change here too. Place names keep their Spanish or
 // Valencian form, which is how they are signposted in the city, with a short
@@ -85,6 +85,37 @@ export const EN: Record<string, ArticleText> = {
       'For centuries València’s great garden was the Huerta, the market gardens that surrounded it like a tapestry of crops and irrigation channels. Public gardens arrived in the 19th century, with tree-lined promenades such as the Glorieta and gardens such as the Parterre and Monforte.',
       'The 1957 flood changed the scale of things. Diverting the river gave the city a continuous green corridor, the Jardín del Turia, and with it a new way of thinking about its parks: connected to one another and meant to be walked. Parque de Cabecera, which recreates a riverside woodland, and the Jardín de las Hespérides, which reinterprets the old ornamental citrus gardens, are two recent examples of gardens that say something about where they stand.',
       'The outline of every green space you see on the map comes from the city council’s open data.',
+    ].join('\n\n'),
+  },
+  'valencia-y-la-seda': {
+    title: 'València and silk',
+    summary: 'Silk connects València’s commercial history with its traditions.',
+    body: [
+      'The Velluters neighbourhood developed through the silk industry. La Lonja reflects the importance of silk trading, while traditional clothing keeps the fabric present in the city’s celebrations.',
+    ].join('\n\n'),
+  },
+  'arquitectura-y-vida-urbana': {
+    title: 'Architecture and urban life in València',
+    summary: 'From the historic centre to contemporary architecture.',
+    body: [
+      'Central València brings together the Cathedral, La Lonja de la Seda and the modernist Mercado Central.',
+      'The City of Arts and Sciences provides a contemporary contrast to this historic cityscape.',
+    ].join('\n\n'),
+  },
+  'fallas-tradicion-y-barrio': {
+    title: 'Fallas: a neighbourhood tradition',
+    summary: 'A neighbourhood celebration of art, music and tradition.',
+    body: [
+      'Fallas associations bring neighbours and friends together to organise celebrations in their neighbourhoods. Their monuments tell satirical stories through figures called ninots.',
+      'Music and traditional Valencian clothing accompany a festival created collectively in the streets.',
+    ].join('\n\n'),
+  },
+  'arroces-y-horchata': {
+    title: 'Rice dishes and horchata',
+    summary: 'Rice dishes and a drink that characterise Valencian cuisine.',
+    body: [
+      'Valencian cuisine includes rice dishes such as paella, arròs al forn and arroz a banda.',
+      'Tiger nut horchata, served with fartons, is another expression of the local food tradition.',
     ].join('\n\n'),
   },
 }

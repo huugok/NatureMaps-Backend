@@ -1,6 +1,6 @@
 {
-  "id": "113e024e-9e9d-471c-bbd2-714add1d4d21",
-  "prevId": "1a2154ae-9555-40b2-b2b5-bb42efc9826e",
+  "id": "1db54a17-803e-4945-a4c2-f76aa4197eb5",
+  "prevId": "ecca294e-1433-4b39-be49-05dda57a150a",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1259,160 +1259,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.species_flowering_periods": {
-      "name": "species_flowering_periods",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "species_id": {
-          "name": "species_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "start_month": {
-          "name": "start_month",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "end_month": {
-          "name": "end_month",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "region": {
-          "name": "region",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source_name": {
-          "name": "source_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source_url": {
-          "name": "source_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "species_flowering_periods_species_idx": {
-          "name": "species_flowering_periods_species_idx",
-          "columns": [
-            {
-              "expression": "species_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "species_flowering_periods_months_idx": {
-          "name": "species_flowering_periods_months_idx",
-          "columns": [
-            {
-              "expression": "start_month",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "end_month",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "species_flowering_periods_unique": {
-          "name": "species_flowering_periods_unique",
-          "columns": [
-            {
-              "expression": "species_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "start_month",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "end_month",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "region",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "source_url",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "species_flowering_periods_species_id_species_id_fk": {
-          "name": "species_flowering_periods_species_id_species_id_fk",
-          "tableFrom": "species_flowering_periods",
-          "tableTo": "species",
-          "columnsFrom": [
-            "species_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "species_flowering_periods_month_check": {
-          "name": "species_flowering_periods_month_check",
-          "value": "\"species_flowering_periods\".\"start_month\" between 1 and 12 and \"species_flowering_periods\".\"end_month\" between 1 and 12"
-        },
-        "species_flowering_periods_region_check": {
-          "name": "species_flowering_periods_region_check",
-          "value": "length(trim(\"species_flowering_periods\".\"region\")) > 0 and length(trim(\"species_flowering_periods\".\"source_name\")) > 0 and length(trim(\"species_flowering_periods\".\"source_url\")) > 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.species_profiles": {
       "name": "species_profiles",
       "schema": "",
@@ -1567,6 +1413,143 @@
       },
       "policies": {},
       "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.routes": {
+      "name": "routes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "theme": {
+          "name": "theme",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shape": {
+          "name": "shape",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "length_category": {
+          "name": "length_category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "distance_meters": {
+          "name": "distance_meters",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "duration_seconds": {
+          "name": "duration_seconds",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_latitude": {
+          "name": "start_latitude",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_longitude": {
+          "name": "start_longitude",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stops": {
+          "name": "stops",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "path": {
+          "name": "path",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "generated_at": {
+          "name": "generated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "routes_name_unique": {
+          "name": "routes_name_unique",
+          "columns": [
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "routes_theme_check": {
+          "name": "routes_theme_check",
+          "value": "\"routes\".\"theme\" in ('botanica', 'cultural', 'mixta')"
+        },
+        "routes_shape_check": {
+          "name": "routes_shape_check",
+          "value": "\"routes\".\"shape\" in ('circular', 'lineal')"
+        },
+        "routes_length_category_check": {
+          "name": "routes_length_category_check",
+          "value": "\"routes\".\"length_category\" in ('corta', 'media', 'larga')"
+        },
+        "routes_text_check": {
+          "name": "routes_text_check",
+          "value": "length(trim(\"routes\".\"name\")) > 0 and length(trim(\"routes\".\"description\")) > 0"
+        },
+        "routes_values_check": {
+          "name": "routes_values_check",
+          "value": "\"routes\".\"distance_meters\" > 0 and \"routes\".\"duration_seconds\" > 0"
+        },
+        "routes_json_check": {
+          "name": "routes_json_check",
+          "value": "jsonb_typeof(\"routes\".\"stops\") = 'array' and jsonb_typeof(\"routes\".\"path\") = 'array' and jsonb_array_length(\"routes\".\"path\") >= 2"
+        },
+        "routes_coordinates_check": {
+          "name": "routes_coordinates_check",
+          "value": "\"routes\".\"start_latitude\" between -90 and 90 and \"routes\".\"start_longitude\" between -180 and 180"
+        }
+      },
       "isRLSEnabled": false
     }
   },

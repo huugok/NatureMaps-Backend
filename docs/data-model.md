@@ -6,7 +6,7 @@ Guardar especie, nombre común por idioma, coordenadas e identificador de cada p
 el inventario para las pantallas. Conservar el enriquecimiento Wikipedia del prototipo y la
 integración Pl@ntNet de `main`. Las fuentes futuras son contexto, no funcionalidades implementadas.
 
-## Esquema actual: seis tablas de catálogo
+## Esquema actual: tablas de catálogo
 
 | Tabla | Datos y responsabilidad |
 |---|---|
@@ -18,6 +18,7 @@ integración Pl@ntNet de `main`. Las fuentes futuras son contexto, no funcionali
 | `species_flowering_periods` | Rangos de meses por especie y región, con fuente y enlace por registro; permite filtrar sin interpretar texto. |
 | `pois` | POIs histórico-culturales del mapa (NM-06): nombre oficial, categoría (`monumento`, `recurso-turistico`), coordenadas, fuente y enlace al registro; descripción e imagen con sus créditos cuando están curadas. |
 | `poi_profiles` | Texto de la ficha del POI por idioma (extracto de Wikipedia con licencia, hasta que NM-09 traiga contenido propio). |
+| `routes` | Catálogo de rutas botánico-culturales predefinidas (migración `0004_far_payback`): nombre único, tema (`botanica`/`cultural`/`mixta`), forma (`circular`/`lineal`), categoría de longitud (`corta`/`media`/`larga`), distancia y duración medidas por Valhalla, punto de inicio, descripción, `stops` (jsonb, paradas en orden con kind/id/nombre/coords/`speciesId`) y `path` (jsonb, geometría ya decodificada). La ficha se pinta desde BD sin llamar al motor de rutas. El `speciesId` de la parada (planta) permite abrir su ficha real desde el frontend. |
 | `data_sources` | Una fila por fuente (`code` = `source` de `species`/`plant_locations`, sin FK): organismo, nombre, URL, licencia y su URL, atribución, logo opcional y `last_downloaded_at`. Se crea/actualiza en la misma transacción que cada importación. |
 
 `users` es la séptima tabla, conservada del scaffold. No se añaden tablas de observaciones que
@@ -74,6 +75,9 @@ fuentes y acceden a la base:
 | `speciesEnrichment.ts` | Consulta Wikipedia/Commons: texto, Wikidata y foto con créditos. |
 | `wikipediaImport.ts` | Guarda enriquecimientos de especies pendientes. |
 | `speciesCatalog.ts` | Lee nombres distintos y enriquecimiento por especie. |
+| `valhalla.ts` | Cliente del motor de rutas: POST /route a pie y decodificación de la polilínea. |
+| `routeGenerator.ts` | `generateRoute()`: elige paradas (anillo o línea) y mide el recorrido con Valhalla. |
+| `routeCatalog.ts` | Listado ligero y ficha del catálogo de rutas guardadas. |
 
 | Campo municipal | Destino |
 |---|---|
@@ -153,7 +157,8 @@ garantizar la propiedad.
 
 ## Comandos y comprobación
 
-La migración inicial es `drizzle/0000_plant_catalog.sql`; `0001_nifty_lady_ursula.sql` añade `species_profiles`, `0002_data_sources.sql` añade `data_sources` y `0003_gigantic_tinkerer.sql` añade `pois` y `poi_profiles`. Cada una con su snapshot y journal.
+La migración inicial es `drizzle/0000_plant_catalog.sql`; `0001_nifty_lady_ursula.sql` añade `species_profiles`, `0002_data_sources.sql` añade `data_sources`, `0003_gigantic_tinkerer.sql` añade `pois` y `poi_profiles` y `0004_far_payback.sql` añade `routes`, y `0005_green_areas_editorial.sql` añade `green_areas`,
+`editorial_articles` y `plant_locations.green_area_id`. Cada una con su snapshot y journal.
 `npm run import:arbolado` descarga todo el inventario por páginas (`--limit`, `--offset`) y registra licencia y hora.
 El reinicio experimental ya se completó; los cambios siguientes requieren nuevas migraciones,
 sin borrar datos ni editar la inicial aplicada. Para instalar desde cero, usa una base vacía.
@@ -179,17 +184,39 @@ ORDER BY table_name;
 ```
 
 Después de la migración inicial deben aparecer `plant_locations`, `plant_names`, `species`,
-`species_enrichments`, `species_profiles` (migración `0001`), `data_sources` (migración `0002`), `users`. El historial está en otro esquema.
+`species_enrichments`, `species_profiles` (migración `0001`), `data_sources` (migración `0002`),
+`pois` y `poi_profiles` (migración `0003`), `routes` (migración `0004`), `green_areas` y `editorial_articles`
+(migración `0005`) y `users`. El historial está en otro esquema.
+
+## Rutas predefinidas
+
+`routes` guarda el catálogo de rutas botánico-culturales ya calculadas. El generador
+(`src/services/routeGenerator.ts`, `generateRoute()`) es un método reutilizable: recibe inicio,
+longitud objetivo, contenido (`botanica` = solo plantas, `cultural` = solo POIs, `mixta` = ambos,
+alternados por hueco) y forma pedida (`circular` = anillo; `lineal` = recta en una dirección).
+El inicio pedido es el centro de búsqueda; la ruta arranca en la primera parada real y, si es
+un anillo, cierra volviendo a ella. Busca paradas en el inventario y el catálogo de POIs, intenta
+cerrar el anillo alrededor del inicio y, si la zona no da para eso, cae a una ruta lineal en la
+dirección con más paradas, siempre con la longitud objetivo de su categoría (corta 1–3 km, media
+4–7 km, larga 8+ km). Las
+métricas y la geometría las mide Valhalla a pie; el cliente
+(`src/services/valhalla.ts`) encadena pares consecutivos de puntos y decodifica la polilínea
+(precision 6). La seed (`npm run db:seed:routes`, `src/db/seedRoutes.ts`) solo trae las 12
+definiciones (4 por longitud: 3 contenidos + una recta) y hace upsert idempotente por nombre. El listado
+(`GET /routes`) no devuelve `path` (puede pesar cientos de KB); la ficha (`GET /routes/:id`) sí.
+
+Las rutas de usuario (que el visitante cree desde el mapa) quedan para otra UT y reutilizarán
+`generateRoute()`; no añadir tablas ni endpoints de usuario hasta que exista ese flujo.
 
 ## Fuera de alcance ahora
 
 Persistencia de observaciones Pl@ntNet/usuarios, sincronización de cambios municipales,
-deduplicación entre fuentes, GBIF, BDBCV, parques, rutas y traducciones automáticas. Cada uno
-requerirá su propio cambio cuando se implemente el flujo que lo utiliza.
+deduplicación entre fuentes, GBIF, BDBCV, parques, rutas de usuario y traducciones automáticas.
+Cada uno requerirá su propio cambio cuando se implemente el flujo que lo utiliza.
 
 ## Zonas verdes y contenido editorial (NM-08)
 
-Migración `0004_green_areas_editorial.sql`: dos tablas y una columna.
+Migración `0005_green_areas_editorial.sql`: dos tablas y una columna.
 
 | Tabla / columna | Datos y responsabilidad |
 |---|---|
@@ -215,7 +242,7 @@ Decisiones:
 Comandos (en este orden la primera vez):
 
 ```bash
-npm run db:migrate            # aplica 0004 (avisar al equipo: base compartida)
+npm run db:migrate            # aplica 0004 y 0005 (avisar al equipo: base compartida)
 npm run import:zonas-verdes   # descarga la capa y cruza el arbolado; idempotente
 npm run db:seed:editorial     # carga los artículos; idempotente
 npm run test:zonas-verdes
