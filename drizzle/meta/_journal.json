@@ -36,6 +36,13 @@
       "when": 1794520475642,
       "tag": "0004_green_areas_editorial",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795215717697,
+      "tag": "0005_lowly_veda",
+      "breakpoints": true
     }
   ]
 }
