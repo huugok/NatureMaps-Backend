@@ -33,22 +33,22 @@
     {
       "idx": 4,
       "version": "7",
-      "when": 1794520475642,
-      "tag": "0004_green_areas_editorial",
+      "when": 1794485879090,
+      "tag": "0004_far_payback",
       "breakpoints": true
     },
     {
       "idx": 5,
       "version": "7",
-      "when": 1794952397829,
-      "tag": "0005_culture_editorial",
+      "when": 1794520475642,
+      "tag": "0005_green_areas_editorial",
       "breakpoints": true
     },
     {
       "idx": 6,
       "version": "7",
-      "when": 1795099434273,
-      "tag": "0006_culture_topics",
+      "when": 1795283122102,
+      "tag": "0006_optimal_polaris",
       "breakpoints": true
     }
   ]

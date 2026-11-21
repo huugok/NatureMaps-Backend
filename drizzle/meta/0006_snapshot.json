@@ -1,6 +1,6 @@
 {
-  "id": "3fab5dae-b6d8-455d-84ff-5379858c6197",
-  "prevId": "e9aa96c7-6b7f-4825-84fc-4689f46ce0e3",
+  "id": "10264b5f-a2fc-4cdc-877d-0e10778c38dc",
+  "prevId": "1db54a17-803e-4945-a4c2-f76aa4197eb5",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1025,6 +1025,143 @@
         "pois_image_check": {
           "name": "pois_image_check",
           "value": "\"pois\".\"image_url\" is null or (\"pois\".\"image_source_url\" is not null and \"pois\".\"image_author\" is not null and \"pois\".\"image_license\" is not null and \"pois\".\"image_license_url\" is not null and \"pois\".\"image_attribution\" is not null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.routes": {
+      "name": "routes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "theme": {
+          "name": "theme",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shape": {
+          "name": "shape",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "length_category": {
+          "name": "length_category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "distance_meters": {
+          "name": "distance_meters",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "duration_seconds": {
+          "name": "duration_seconds",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_latitude": {
+          "name": "start_latitude",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_longitude": {
+          "name": "start_longitude",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stops": {
+          "name": "stops",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "path": {
+          "name": "path",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "generated_at": {
+          "name": "generated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "routes_name_unique": {
+          "name": "routes_name_unique",
+          "columns": [
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "routes_theme_check": {
+          "name": "routes_theme_check",
+          "value": "\"routes\".\"theme\" in ('botanica', 'cultural', 'mixta')"
+        },
+        "routes_shape_check": {
+          "name": "routes_shape_check",
+          "value": "\"routes\".\"shape\" in ('circular', 'lineal')"
+        },
+        "routes_length_category_check": {
+          "name": "routes_length_category_check",
+          "value": "\"routes\".\"length_category\" in ('corta', 'media', 'larga')"
+        },
+        "routes_text_check": {
+          "name": "routes_text_check",
+          "value": "length(trim(\"routes\".\"name\")) > 0 and length(trim(\"routes\".\"description\")) > 0"
+        },
+        "routes_values_check": {
+          "name": "routes_values_check",
+          "value": "\"routes\".\"distance_meters\" > 0 and \"routes\".\"duration_seconds\" > 0"
+        },
+        "routes_json_check": {
+          "name": "routes_json_check",
+          "value": "jsonb_typeof(\"routes\".\"stops\") = 'array' and jsonb_typeof(\"routes\".\"path\") = 'array' and jsonb_array_length(\"routes\".\"path\") >= 2"
+        },
+        "routes_coordinates_check": {
+          "name": "routes_coordinates_check",
+          "value": "\"routes\".\"start_latitude\" between -90 and 90 and \"routes\".\"start_longitude\" between -180 and 180"
         }
       },
       "isRLSEnabled": false

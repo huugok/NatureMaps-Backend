@@ -1,5 +1,5 @@
 {
-  "id": "1a2154ae-9555-40b2-b2b5-bb42efc9826e",
+  "id": "ecca294e-1433-4b39-be49-05dda57a150a",
   "prevId": "0091dcb0-dad2-4bd0-9c04-5032fe4acded",
   "version": "7",
   "dialect": "postgresql",
@@ -98,357 +98,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.editorial_articles": {
-      "name": "editorial_articles",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "slug": {
-          "name": "slug",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "language": {
-          "name": "language",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "topic": {
-          "name": "topic",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "green_area_group": {
-          "name": "green_area_group",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "title": {
-          "name": "title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "summary": {
-          "name": "summary",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "body": {
-          "name": "body",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sources": {
-          "name": "sources",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "position": {
-          "name": "position",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        }
-      },
-      "indexes": {
-        "editorial_articles_slug_language_unique": {
-          "name": "editorial_articles_slug_language_unique",
-          "columns": [
-            {
-              "expression": "slug",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "language",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "editorial_articles_topic_idx": {
-          "name": "editorial_articles_topic_idx",
-          "columns": [
-            {
-              "expression": "topic",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "editorial_articles_group_idx": {
-          "name": "editorial_articles_group_idx",
-          "columns": [
-            {
-              "expression": "green_area_group",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "editorial_articles_text_check": {
-          "name": "editorial_articles_text_check",
-          "value": "length(trim(\"editorial_articles\".\"slug\")) > 0 and length(trim(\"editorial_articles\".\"language\")) > 0 and length(trim(\"editorial_articles\".\"title\")) > 0 and length(trim(\"editorial_articles\".\"summary\")) > 0 and length(trim(\"editorial_articles\".\"body\")) > 0"
-        },
-        "editorial_articles_topic_check": {
-          "name": "editorial_articles_topic_check",
-          "value": "\"editorial_articles\".\"topic\" in ('flora', 'parques', 'jardines', 'paisajismo')"
-        },
-        "editorial_articles_sources_check": {
-          "name": "editorial_articles_sources_check",
-          "value": "jsonb_typeof(\"editorial_articles\".\"sources\") = 'array' and jsonb_array_length(\"editorial_articles\".\"sources\") > 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.green_areas": {
-      "name": "green_areas",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "source": {
-          "name": "source",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "external_id": {
-          "name": "external_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "reported_name": {
-          "name": "reported_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "group_slug": {
-          "name": "group_slug",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "typology": {
-          "name": "typology",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "neighborhood": {
-          "name": "neighborhood",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "area_m2": {
-          "name": "area_m2",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "featured": {
-          "name": "featured",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "geometry": {
-          "name": "geometry",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "min_latitude": {
-          "name": "min_latitude",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "max_latitude": {
-          "name": "max_latitude",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "min_longitude": {
-          "name": "min_longitude",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "max_longitude": {
-          "name": "max_longitude",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "latitude": {
-          "name": "latitude",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "longitude": {
-          "name": "longitude",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source_url": {
-          "name": "source_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "imported_at": {
-          "name": "imported_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "green_areas_source_external_unique": {
-          "name": "green_areas_source_external_unique",
-          "columns": [
-            {
-              "expression": "source",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "external_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "green_areas_group_idx": {
-          "name": "green_areas_group_idx",
-          "columns": [
-            {
-              "expression": "group_slug",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "green_areas_bbox_idx": {
-          "name": "green_areas_bbox_idx",
-          "columns": [
-            {
-              "expression": "min_latitude",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "max_latitude",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "min_longitude",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "max_longitude",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "green_areas_text_check": {
-          "name": "green_areas_text_check",
-          "value": "length(trim(\"green_areas\".\"source\")) > 0 and length(trim(\"green_areas\".\"external_id\")) > 0 and length(trim(\"green_areas\".\"name\")) > 0 and length(trim(\"green_areas\".\"group_slug\")) > 0 and length(trim(\"green_areas\".\"source_url\")) > 0"
-        },
-        "green_areas_geometry_check": {
-          "name": "green_areas_geometry_check",
-          "value": "jsonb_typeof(\"green_areas\".\"geometry\") = 'object'"
-        },
-        "green_areas_bbox_check": {
-          "name": "green_areas_bbox_check",
-          "value": "\"green_areas\".\"min_latitude\" <= \"green_areas\".\"max_latitude\" and \"green_areas\".\"min_longitude\" <= \"green_areas\".\"max_longitude\" and \"green_areas\".\"latitude\" between -90 and 90 and \"green_areas\".\"longitude\" between -180 and 180"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.plant_locations": {
       "name": "plant_locations",
       "schema": "",
@@ -461,12 +110,6 @@
         },
         "species_id": {
           "name": "species_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "green_area_id": {
-          "name": "green_area_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
@@ -564,21 +207,6 @@
           "method": "btree",
           "with": {}
         },
-        "plant_locations_green_area_idx": {
-          "name": "plant_locations_green_area_idx",
-          "columns": [
-            {
-              "expression": "green_area_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "plant_locations_coordinates_idx": {
           "name": "plant_locations_coordinates_idx",
           "columns": [
@@ -613,19 +241,6 @@
             "id"
           ],
           "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "plant_locations_green_area_id_green_areas_id_fk": {
-          "name": "plant_locations_green_area_id_green_areas_id_fk",
-          "tableFrom": "plant_locations",
-          "tableTo": "green_areas",
-          "columnsFrom": [
-            "green_area_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -1025,6 +640,143 @@
         "pois_image_check": {
           "name": "pois_image_check",
           "value": "\"pois\".\"image_url\" is null or (\"pois\".\"image_source_url\" is not null and \"pois\".\"image_author\" is not null and \"pois\".\"image_license\" is not null and \"pois\".\"image_license_url\" is not null and \"pois\".\"image_attribution\" is not null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.routes": {
+      "name": "routes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "theme": {
+          "name": "theme",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shape": {
+          "name": "shape",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "length_category": {
+          "name": "length_category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "distance_meters": {
+          "name": "distance_meters",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "duration_seconds": {
+          "name": "duration_seconds",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_latitude": {
+          "name": "start_latitude",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_longitude": {
+          "name": "start_longitude",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stops": {
+          "name": "stops",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "path": {
+          "name": "path",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "generated_at": {
+          "name": "generated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "routes_name_unique": {
+          "name": "routes_name_unique",
+          "columns": [
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "routes_theme_check": {
+          "name": "routes_theme_check",
+          "value": "\"routes\".\"theme\" in ('botanica', 'cultural', 'mixta')"
+        },
+        "routes_shape_check": {
+          "name": "routes_shape_check",
+          "value": "\"routes\".\"shape\" in ('circular', 'lineal')"
+        },
+        "routes_length_category_check": {
+          "name": "routes_length_category_check",
+          "value": "\"routes\".\"length_category\" in ('corta', 'media', 'larga')"
+        },
+        "routes_text_check": {
+          "name": "routes_text_check",
+          "value": "length(trim(\"routes\".\"name\")) > 0 and length(trim(\"routes\".\"description\")) > 0"
+        },
+        "routes_values_check": {
+          "name": "routes_values_check",
+          "value": "\"routes\".\"distance_meters\" > 0 and \"routes\".\"duration_seconds\" > 0"
+        },
+        "routes_json_check": {
+          "name": "routes_json_check",
+          "value": "jsonb_typeof(\"routes\".\"stops\") = 'array' and jsonb_typeof(\"routes\".\"path\") = 'array' and jsonb_array_length(\"routes\".\"path\") >= 2"
+        },
+        "routes_coordinates_check": {
+          "name": "routes_coordinates_check",
+          "value": "\"routes\".\"start_latitude\" between -90 and 90 and \"routes\".\"start_longitude\" between -180 and 180"
         }
       },
       "isRLSEnabled": false
