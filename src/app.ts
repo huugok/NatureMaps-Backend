@@ -5,6 +5,7 @@ import { treesRouter } from './routes/trees.js'
 import { speciesRouter } from './routes/species.js'
 import { sourcesRouter } from './routes/sources.js'
 import { poisRouter } from './routes/pois.js'
+import { routesRouter } from './routes/routes.js'
 import { greenAreasRouter } from './routes/greenAreas.js'
 import { editorialRouter } from './routes/editorial.js'
 
@@ -17,6 +18,7 @@ app.use('/trees', treesRouter)
 app.use('/species', speciesRouter)
 app.use('/sources', sourcesRouter)
 app.use('/pois', poisRouter)
+app.use('/routes', routesRouter)
 app.use('/green-areas', greenAreasRouter)
 app.use('/editorial', editorialRouter)
 

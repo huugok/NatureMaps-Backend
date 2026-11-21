@@ -3,8 +3,8 @@
 Guía para agentes (y personas) que trabajen en este repositorio. Mantenerla actualizada cuando
 cambien los comandos, la estructura o las convenciones.
 
-> Última verificación: 2026-10-27 · `origin/main` @ `bd4ed52`.
-> `feat/plant-data-model`: una migración inicial limpia para el catálogo simplificado.
+> Última verificación: 2026-11-12 · rama `feat/rutas-catalogo` (desde `main` @ `b1ab2b4`, POIs incluidos).
+> Catálogo de rutas predefinidas: migración `0004`, generador con Valhalla, `/routes` y seed `db:seed:routes`.
 
 ## Qué es este proyecto
 
@@ -66,15 +66,18 @@ npm install
 npm run dev            # tsx watch src/index.ts
 npm run dev:local      # backend con base en memoria y datos reales del geoportal; no toca Neon (--arboles=N)
 npm run build          # tsc -> dist/
-npm test               # todas las suites (catálogo + POIs + perfiles)
+npm test               # todas las suites (catálogo + POIs + perfiles + rutas)
 npm run test:catalog   # Node Test Runner + tsx + PGlite; sin .env ni servicios externos
 npm run test:pois      # suite de POIs (mismo harness PGlite)
 npm run test:profiles  # informe de curaduría (formato del `--dry-run`, sin base)
+npm run test:routes    # suite de rutas (generador con Valhalla simulado + catálogo)
 npm start              # node dist/index.js
 
 npm run db:generate    # migraciones SQL desde src/db/schema.ts -> drizzle/
 npm run db:migrate     # aplica migraciones
 npm run db:seed        # seed idempotente del contenido editorial (species_profiles)
+npm run db:seed:pois   # seed de fichas de POIs (títulos de Wikipedia curados)
+npm run db:seed:routes # genera y guarda las 12 rutas predefinidas con Valhalla; requiere DATABASE_URL y VALHALLA_URL
 npm run import:arbolado # descarga el inventario de Valencia (--limit, --offset); requiere DATABASE_URL
 npm run import:zonas-verdes # zonas verdes del geoportal + cruce con el arbolado (NM-08); idempotente
 npm run db:seed:editorial   # artículos de flora y zonas verdes en es/ca/en (NM-08); idempotente
@@ -87,8 +90,9 @@ node docs/check-db.mjs # SELECT de conexión; sin cambios en datos
 
 En PowerShell, si la política bloquea `npm.ps1`, usar `npm.cmd` con los mismos argumentos.
 
-No hay linter. Para cambios del catálogo o de POIs ejecutar `npm run build` y `npm test`
-(o una sola suite con `npm run test:catalog` / `npm run test:pois` / `npm run test:profiles`). Las suites ejecutan la migración
+No hay linter. Para cambios del catálogo, de POIs o de rutas ejecutar `npm run build` y `npm test`
+(o una sola suite con `npm run test:catalog` / `npm run test:pois` / `npm run test:profiles` /
+`npm run test:routes`). Las suites ejecutan la migración
 y el SQL real sobre PGlite, y prueban HTTP con un upstream ficticio; no demuestran disponibilidad de
 Neon ni de las APIs públicas.
 
@@ -98,6 +102,9 @@ Neon ni de las APIs públicas.
 
 - `DATABASE_URL` — cadena de Neon, con `sslmode=require`.
 - `PORT` — puerto HTTP (por defecto `3000`).
+- `VALHALLA_URL` — motor de rutas Valhalla (demo FOSSGIS `https://valhalla1.openstreetmap.de` o
+  despliegue Docker propio). Solo lo usa `npm run db:seed:routes` para generar el catálogo de rutas
+  predefinidas; la API en marcha no llama a Valhalla. Sin esta variable el generador falla con 500.
 
 Nunca leer, imprimir ni commitear valores reales de `.env`.
 
@@ -147,7 +154,20 @@ Catálogo actual: `species`, `plant_locations`, `plant_names`, `species_enrichme
 `data_sources` (licencia, atribución, logo y fecha de descarga por fuente),
 `species_profiles` (ficha editorial curada por especie/idioma, cargada con `npm run db:seed`,
 idempotente y adjunta al taxón existente por nombre científico; los textos curados mandan sobre
-Wikipedia con `coalesce` y las fotos siguen en `species_enrichments`).
+Wikipedia con `coalesce` y las fotos siguen en `species_enrichments`),
+`pois` y `poi_profiles` (NM-06) y `routes` (migración `0004_far_payback`): catálogo de rutas
+botánico-culturales predefinidas. Cada fila guarda nombre (único), theme, shape, length_category,
+métricas reales de Valhalla, punto de inicio (la primera parada real; el centro de búsqueda es
+solo un parámetro interno del generador), descripción, `stops` (jsonb, paradas en orden con
+kind/id/nombre/coords/speciesId) y `path` (jsonb, geometría ya decodificada): la ficha se pinta desde BD sin llamar
+al motor de rutas en vivo. El generador vive en `src/services/routeGenerator.ts` (`generateRoute`,
+método reutilizable; la seed solo trae las 12 definiciones) y devuelve rutas circulares (anillo de
+paradas repartidas) o lineales (si la zona no da para cerrar el anillo, siempre con la longitud
+objetivo de su categoría). Valhalla se consulta por pares consecutivos de puntos (2 locations por
+petición) para no depender del límite de waypoints. Para que la traza sea circular, las paradas se
+pegan al anillo (banda del 60 %–140 % del radio, una parada cada ~350 m) y los tramos se piden
+directos entre paradas, para que el camino siga las calles de verdad; si un tramo hace ida y vuelta
+por la misma calle, esa parada se aparta y el intento se repite.
 Consultar `docs/data-model.md` antes de cambiar importación o lectura. `users` se conserva.
 El usuario redujo expresamente el alcance a plantas, Wikipedia y la integración Pl@ntNet existente.
 No recrear logs, payloads completos ni infraestructura genérica para proveedores futuros.
@@ -208,6 +228,10 @@ incrementales; esta decisión puntual no autoriza nuevos resets.
 - `GET /trees?limit=200` — `{ total, returned, limit, trees }`.
 - `GET /trees/nearby?lat=…&lon=…&radius=1000&limit=100&lang=es` — plantas más cercanas a un punto (línea recta, `distance` en metros), ordenadas por distancia; `radius` 50–10000, `limit` 1–1000. 400 si `lat`/`lon` faltan o no son numéricos.
 - `GET /pois/nearby` y `GET /pois/:id` (NM-06) — POIs histórico-culturales con la ficha completa (nombre, categoría, descripción curada, imagen con créditos, ubicación y fuente). Se importan con `npm run import:pois` del geoportal municipal (capas `Turismo/202` monumentos y `Turismo/226` recursos) y el contenido se siembra con `npm run db:seed:pois` desde títulos de Wikipedia elegidos a mano en `src/services/poiProfiles.ts` (nunca por parecido de nombre). Las capas BIC/BRL (polígonos, varias geometrías por bien) quedan fuera de esta UT.
+- `GET /routes` y `GET /routes/:id` — catálogo de rutas botánico-culturales predefinidas: listado
+  ligero (sin geometría) y ficha con paradas ordenadas y `path` guardado en BD. El catálogo se
+  genera con `npm run db:seed:routes` (`generateRoute()` + Valhalla); los GET no tienen parámetros
+  y abren en navegador. 400 si el id no es numérico, 404 si no existe.
 - `GET /sources`, `GET /sources/:code` — fuentes con licencia, atribución, logo y fecha de descarga.
 - `GET /trees/:id` — árbol + su `dataSource` (o `null` hasta la primera importación) + su `species` (o `null`); 400 si el id no es numérico, 404 si no existe.
 - `POST /species/enrich` — enriquece especies distintas de `trees` que aún no estén guardadas.
@@ -228,6 +252,10 @@ Los `GET` no requieren parámetros para poder abrirlos en el navegador
 - **Wikipedia REST summary** (`/api/rest_v1/page/summary/{title}`): gratis, probar `es` y caer a
   `en`, con `User-Agent` descriptivo obligatorio por etiqueta de Wikimedia.
 - **Wikidata**: el id llega en el propio summary (`wikibase_item`); no hace falta llamada aparte.
+- **Valhalla** (`POST {VALHALLA_URL}/route`, `costing: 'pedestrian'`, unidades km): genera las rutas
+  del catálogo una sola vez; la respuesta trae `trip.summary` (length km, time s) y `legs[].shape`
+  (polilínea encoded precision 6, decodificada en `src/services/valhalla.ts`). El frontend nunca
+  llama a Valhalla: lee el `path` guardado en BD.
 - Previstas: GBIF, Overpass/OSM, BDBCV, IDEV, AEMET.
 
 Normalización del prototipo: los nombres de Valencia incluyen cultivares/sexo
