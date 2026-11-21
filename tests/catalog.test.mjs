@@ -403,7 +403,7 @@ test('catalog import and HTTP API with isolated PostgreSQL', async (t) => {
       const before = { databaseCalls, upstreamCalls }
       for (const path of ['/trees/nearby?lon=0', '/trees/nearby?lat=abc&lon=0', '/trees/nearby?lat=91&lon=0',
         '/trees/nearby?lat=0&lon=-181', '/trees/nearby?lat=0&lon=0&radius=49', '/trees/nearby?lat=0&lon=0&radius=10001',
-        '/trees/nearby?lat=0&lon=0&limit=1001', '/trees/nearby?lat=0&lon=0&limit=0', '/trees/nearby?lat=0&lon=0&lang=!!!']) {
+        '/trees/nearby?lat=0&lon=0&limit=20001', '/trees/nearby?lat=0&lon=0&limit=0', '/trees/nearby?lat=0&lon=0&lang=!!!']) {
         assert.equal((await request(path)).status, 400)
       }
       assert.deepEqual({ databaseCalls, upstreamCalls }, before)
@@ -438,8 +438,17 @@ test('catalog import and HTTP API with isolated PostgreSQL', async (t) => {
         assert.equal(propera.commonNameLanguage, 'ca')
         assert.equal(propera.displayName, 'Planta propera')
 
+        const all = (await request('/trees/nearby?lat=39.4779&lon=-0.3778&radius=1000')).body
+        assert.equal(all.limit, null)
+        assert.ok(all.returned >= mine.length, 'sin limit devuelve todas las del radio')
+        for (const tree of all.trees) assert.ok(tree.distance <= 1000)
+
         const limited = (await request('/trees/nearby?lat=39.4779&lon=-0.3778&radius=1000&limit=2')).body
         assert.equal(limited.returned, 2)
+        assert.equal(limited.total, all.total)
+        const secondPage = (await request('/trees/nearby?lat=39.4779&lon=-0.3778&radius=1000&limit=2&offset=2')).body
+        assert.equal(secondPage.total, all.total)
+        assert.notEqual(secondPage.trees[0].id, limited.trees[0].id)
         assert.ok(limited.trees[0].distance <= limited.trees[1].distance)
 
         // The raised caps admit the map's wide-mode queries (10x the default).
