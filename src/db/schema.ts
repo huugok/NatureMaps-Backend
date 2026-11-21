@@ -123,6 +123,24 @@ export const speciesProfiles = pgTable('species_profiles', {
   check('species_profiles_language_check', sql`length(trim(${table.language})) > 0`),
 ])
 
+// Periodos observados/curados de floración. Una especie puede florecer en más
+// de un intervalo y cada intervalo conserva su procedencia y ámbito geográfico.
+export const speciesFloweringPeriods = pgTable('species_flowering_periods', {
+  id: serial('id').primaryKey(),
+  speciesId: integer('species_id').notNull().references(() => species.id, { onDelete: 'cascade' }),
+  startMonth: integer('start_month').notNull(),
+  endMonth: integer('end_month').notNull(),
+  region: text('region').notNull(),
+  sourceName: text('source_name').notNull(),
+  sourceUrl: text('source_url').notNull(),
+}, (table) => [
+  index('species_flowering_periods_species_idx').on(table.speciesId),
+  index('species_flowering_periods_months_idx').on(table.startMonth, table.endMonth),
+  check('species_flowering_periods_month_check', sql`${table.startMonth} between 1 and 12 and ${table.endMonth} between 1 and 12`),
+  check('species_flowering_periods_region_check', sql`length(trim(${table.region})) > 0 and length(trim(${table.sourceName})) > 0 and length(trim(${table.sourceUrl})) > 0`),
+  uniqueIndex('species_flowering_periods_unique').on(table.speciesId, table.startMonth, table.endMonth, table.region, table.sourceUrl),
+])
+
 // Puntos de interés histórico-culturales del mapa (NM-06, PA 2859-2861). Una
 // fila por elemento del geoportal municipal; la descripción y la imagen se
 // enriquecen desde Wikidata/Wikimedia con sus créditos, como en species_enrichments.
