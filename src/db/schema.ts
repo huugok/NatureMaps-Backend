@@ -224,7 +224,7 @@ export const routes = pgTable('routes', {
   generatedAt: timestamp('generated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   uniqueIndex('routes_name_unique').on(table.name),
-  check('routes_theme_check', sql`${table.theme} in ('botanica', 'cultural', 'mixta')`),
+  check('routes_theme_check', sql`${table.theme} in ('botanica', 'cultural', 'mixta', 'sponsor')`),
   check('routes_shape_check', sql`${table.shape} in ('circular', 'lineal')`),
   check('routes_length_category_check', sql`${table.lengthCategory} in ('corta', 'media', 'larga')`),
   check('routes_text_check', sql`length(trim(${table.name})) > 0 and length(trim(${table.description})) > 0`),

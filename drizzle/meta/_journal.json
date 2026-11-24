@@ -57,6 +57,13 @@
       "when": 1795288857044,
       "tag": "0007_flowering_periods",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795549082307,
+      "tag": "0008_sponsored_routes",
+      "breakpoints": true
     }
   ]
 }
