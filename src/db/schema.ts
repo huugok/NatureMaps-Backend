@@ -184,7 +184,7 @@ export const pois = pgTable('pois', {
 // pinta sin volver a llamar al motor de rutas. `theme` es el contenido de las
 // paradas y `shape` la forma que quedó el recorrido (circular o lineal cuando
 // la zona no daba para cerrar el anillo).
-export type RouteStopKind = 'planta' | 'poi'
+export type RouteStopKind = 'planta' | 'poi' | 'sponsor'
 
 export type RouteStop = {
   kind: RouteStopKind
@@ -195,6 +195,9 @@ export type RouteStop = {
   /** Especie del catálogo cuando la parada es una planta identificada; null en
    * POIs y plantas sin enlazar. Permite abrir su ficha real desde el mapa. */
   speciesId: number | null
+  /** Nombre comercial y ubicación básica del patrocinador (solo `sponsor`). */
+  businessName?: string
+  sponsorLocation?: string
 }
 
 export type RoutePoint = { latitude: number, longitude: number }
