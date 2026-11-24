@@ -40,8 +40,13 @@ export async function lookupSpecies(req: Request, res: Response) {
 
 export async function speciesList(req: Request, res: Response) {
   try {
+    const region = req.query.region
+    if (region !== undefined && (typeof region !== 'string' || region.trim() === '' || region.length > 100)) {
+      throw new CatalogError(400, 'region no es válido')
+    }
     res.json(await listSpecies(number(req.query.limit, 200, 1, 200), number(req.query.offset, 0, 0, 10_000_000),
-      requestedLanguage(req.query.lang)))
+      requestedLanguage(req.query.lang), req.query.month === undefined ? undefined : number(req.query.month, 1, 1, 12),
+      region === undefined ? undefined : region.trim()))
   } catch (error) { errorResponse(res, error) }
 }
 

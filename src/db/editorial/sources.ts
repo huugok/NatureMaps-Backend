@@ -1,4 +1,4 @@
-// Fuentes del contenido editorial de flora y zonas verdes (NM-08).
+// Fuentes del contenido editorial de flora, zonas verdes y cultura de València.
 //
 // Una fuente se declara una sola vez, con su nombre y su URL comunes y la
 // descripción en los tres idiomas: así una traducción no puede quedarse con
@@ -17,9 +17,10 @@ export interface SourceDefinition {
   name: string
   url: string
   description: Localized
+  consulted?: Localized
 }
 
-/** Fecha de consulta de todas las fuentes; se añade al final de cada descripción. */
+/** Fecha de consulta por defecto; cada fuente puede declarar la suya en consulted. */
 const CONSULTED: Localized = {
   es: 'Consulta 12/11/2026',
   ca: 'Consulta 12/11/2026',
@@ -29,7 +30,7 @@ const CONSULTED: Localized = {
 export function sourceFor(definition: SourceDefinition, language: EditorialLanguage): EditorialSource {
   return {
     name: definition.name,
-    description: `${definition.description[language]} · ${CONSULTED[language]}`,
+    description: `${definition.description[language]} · ${definition.consulted?.[language] ?? CONSULTED[language]}`,
     url: definition.url,
   }
 }
@@ -211,5 +212,65 @@ export const CV_HESPERIDES: SourceDefinition = {
     es: 'Jardín de las Hespérides: diseño basado en el mito y muros de ciprés',
     ca: 'Jardí de les Hespèrides: disseny basat en el mite i murs de xiprer',
     en: 'Garden of the Hesperides: a design based on the myth, with cypress walls',
+  },
+}
+
+export const SPAIN_INFO_SEDA: SourceDefinition = {
+  name: 'Turespaña (spain.info)',
+  url: 'https://www.spain.info/es/descubrir-espana/valencia-ruta-seda/',
+  description: {
+    es: 'Ruta de la Seda en Valencia: historia, patrimonio y tradiciones',
+    ca: 'Ruta de la Seda a València: història, patrimoni i tradicions',
+    en: 'Silk Route in Valencia: history, heritage and traditions',
+  },
+  consulted: {
+    es: 'Consulta 17/11/2026',
+    ca: 'Consulta 17/11/2026',
+    en: 'Retrieved 17/11/2026',
+  },
+}
+
+export const SPAIN_INFO_CIUDAD: SourceDefinition = {
+  name: 'Turespaña (spain.info)',
+  url: 'https://www.spain.info/es/destino/valencia/',
+  description: {
+    es: 'Centro histórico y arquitectura contemporánea de València',
+    ca: 'Centre històric i arquitectura contemporània de València',
+    en: 'València’s historic centre and contemporary architecture',
+  },
+  consulted: {
+    es: 'Consulta 19/11/2026',
+    ca: 'Consulta 19/11/2026',
+    en: 'Retrieved 19/11/2026',
+  },
+}
+
+export const CV_FALLAS: SourceDefinition = {
+  name: 'Comunitat Valenciana – Turisme',
+  url: 'https://www.comunitatvalenciana.com/es/fiestas/fallas',
+  description: {
+    es: 'Fallas: comisiones, monumentos y tradición festiva',
+    ca: 'Falles: comissions, monuments i tradició festiva',
+    en: 'Fallas: neighbourhood associations, monuments and festive traditions',
+  },
+  consulted: {
+    es: 'Consulta 19/11/2026',
+    ca: 'Consulta 19/11/2026',
+    en: 'Retrieved 19/11/2026',
+  },
+}
+
+export const SPAIN_INFO_GASTRONOMIA: SourceDefinition = {
+  name: 'Turespaña (spain.info)',
+  url: 'https://www.spain.info/es/gastronomia/cocina-comunidad-valenciana/',
+  description: {
+    es: 'Cocina valenciana: arroces y horchata de chufa',
+    ca: 'Cuina valenciana: arrossos i orxata de xufa',
+    en: 'Valencian cuisine: rice dishes and tiger nut horchata',
+  },
+  consulted: {
+    es: 'Consulta 19/11/2026',
+    ca: 'Consulta 19/11/2026',
+    en: 'Retrieved 19/11/2026',
   },
 }
