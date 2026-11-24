@@ -76,7 +76,7 @@ export const DEFINITIONS: RouteDefinition[] = [
     description: 'La ruta recta por la avenida de la Marina hasta el mar, entre el arbolado urbano y las palmeras de la playa.' },
   // Ruta patrocinada: como la mixta, pero con comercios de marcas entre las
   // paradas botánicas y culturales. Un solo ejemplo en el catálogo.
-  { name: 'Ruta patrocinada', theme: 'sponsor', lengthCategory: 'corta', shape: 'lineal',
+  { name: 'Ruta patrocinada', theme: 'sponsor', lengthCategory: 'corta', shape: 'circular',
     start: PLAZA_VIRGEN, targetDistance: TARGETS.corta,
     description: 'Un paseo corto por el centro con árboles, patrimonio y las tiendas de las marcas más conocidas de Valencia.' },
 ]

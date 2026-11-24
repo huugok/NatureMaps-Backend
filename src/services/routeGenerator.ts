@@ -247,8 +247,7 @@ function pickRing(candidates: Candidate[], start: { latitude: number, longitude:
   const pools: Record<RouteStopKind, Candidate[]> = {
     planta: withoutExcluded(candidates.filter((candidate) => candidate.kind === 'planta'), excluded),
     poi: withoutExcluded(candidates.filter((candidate) => candidate.kind === 'poi'), excluded),
-    // Las paradas patrocinadas se introducirán cuando haya datos en BD.
-    sponsor: [],
+    sponsor: withoutExcluded(candidates.filter((candidate) => candidate.kind === 'sponsor'), excluded),
   }
   const toStop = (candidate: Candidate): { stop: RouteStop, angle: number } => ({
     stop: { kind: candidate.kind, id: candidate.id, name: candidate.name,
