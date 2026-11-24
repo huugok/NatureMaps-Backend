@@ -373,7 +373,7 @@ function pickLinear(candidates: Candidate[], start: { latitude: number, longitud
  * de verdad y la traza sale redonda si las paradas van pegadas al anillo. Se
  * avisa de qué tramo hace «ida y vuelta» por la misma calle (el índice del
  * peor) para poder apartar esa parada y repetir. */
-async function routeChain(waypoints: ValhallaPoint[]): Promise<{ distanceMeters: number, durationSeconds: number, path: RoutePoint[], worstLeg: number }> {
+export async function routeChain(waypoints: ValhallaPoint[]): Promise<{ distanceMeters: number, durationSeconds: number, path: RoutePoint[], worstLeg: number }> {
   const round = (value: number) => Math.round(value * 1e6) / 1e6
   const path: RoutePoint[] = []
   const legScores: number[] = []
