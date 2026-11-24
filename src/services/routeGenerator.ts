@@ -157,13 +157,10 @@ async function fetchCandidates(
   ].filter((query): query is NonNullable<typeof query> => query !== null)
 
   const queries2 = content === 'sponsor' ? [...queries, db.execute<Candidate>(sql`
-    select 'sponsor'::text as kind, (stop->>'id')::integer as id,
-      coalesce(stop->>'businessName', stop->>'name') as name,
-      (stop->>'latitude')::double precision as latitude,
-      (stop->>'longitude')::double precision as longitude,
-      null::integer as "speciesId", 0 as distance
-    from routes r, jsonb_array_elements(r.stops) as stop
-    where stop->>'kind' = 'sponsor'`)] : queries
+    select 'sponsor'::text as kind, id, business_name as name,
+      business_name as "businessName", address as "sponsorLocation",
+      latitude, longitude, null::integer as "speciesId", 0 as distance
+    from sponsors`)] : queries
   const results = await Promise.all(queries2)
   const candidates: Candidate[] = []
   for (const result of results) for (const row of result.rows) {
@@ -181,6 +178,14 @@ async function fetchCandidates(
     }
   }
   return candidates
+}
+
+/** Campos de patrocinio solo cuando la parada es un comercio (evita `undefined`
+ *  en propiedades opcionales con `exactOptionalPropertyTypes`). */
+function sponsorFields(candidate: Candidate) {
+  return candidate.businessName !== undefined
+    ? { businessName: candidate.businessName, sponsorLocation: candidate.sponsorLocation ?? '' }
+    : {};
 }
 
 /** Contenido de cada hueco: en la mixta alternan planta y POI por construcción
@@ -247,7 +252,8 @@ function pickRing(candidates: Candidate[], start: { latitude: number, longitude:
   }
   const toStop = (candidate: Candidate): { stop: RouteStop, angle: number } => ({
     stop: { kind: candidate.kind, id: candidate.id, name: candidate.name,
-      latitude: candidate.latitude, longitude: candidate.longitude, speciesId: candidate.speciesId },
+      latitude: candidate.latitude, longitude: candidate.longitude, speciesId: candidate.speciesId,
+      ...sponsorFields(candidate) },
     angle: angleOf(project(start, candidate)),
   })
   const scoreOf = (candidate: Candidate, ideal: Plane) => {
@@ -338,7 +344,8 @@ function pickLinear(candidates: Candidate[], start: { latitude: number, longitud
     used.add(chosen)
     const entry = byCandidate.get(chosen)
     stops.push({ stop: { kind: chosen.kind, id: chosen.id, name: chosen.name,
-      latitude: chosen.latitude, longitude: chosen.longitude, speciesId: chosen.speciesId },
+      latitude: chosen.latitude, longitude: chosen.longitude, speciesId: chosen.speciesId,
+      ...sponsorFields(chosen) },
       distance: entry ? along(entry.point) : chosen.distance })
   }
   // Orden de ida: de la parada más cercana a la más lejana.
@@ -466,7 +473,9 @@ export async function generateRoute(options: GenerateRouteOptions): Promise<Gene
         const sponsor = unused.shift()
         if (!sponsor || !stops[slot]) continue
         stops[slot] = { kind: 'sponsor', id: sponsor.id, name: sponsor.name,
-          latitude: sponsor.latitude, longitude: sponsor.longitude, speciesId: null }
+          latitude: sponsor.latitude, longitude: sponsor.longitude, speciesId: null,
+          businessName: sponsor.businessName ?? sponsor.name,
+          sponsorLocation: sponsor.sponsorLocation ?? '' }
       }
     }
     // La ruta empieza en una parada real. El `start` pedido es solo el centro

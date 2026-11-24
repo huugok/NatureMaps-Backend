@@ -64,6 +64,13 @@
       "when": 1795549082307,
       "tag": "0008_sponsored_routes",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795549654969,
+      "tag": "0009_sponsors",
+      "breakpoints": true
     }
   ]
 }
