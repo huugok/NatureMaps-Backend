@@ -304,7 +304,10 @@ function pickLinear(candidates: Candidate[], start: { latitude: number, longitud
     const axial = along(entry.point)
     if (axial > extent) return null
     // Puntaje: acercarse al ideal a lo largo del corredor y poco desvío lateral.
-    return Math.abs(axial - idealDistance) + sideways(entry.point)
+    // El desvío lateral pesa el triple: sin eso una parada al otro lado del
+    // corredor provoca un zigzag (la ruta parece salir del centro en varias
+    // direcciones en vez de avanzar en una).
+    return Math.abs(axial - idealDistance) + 3 * sideways(entry.point)
   }
   const stops: Array<{ stop: RouteStop, distance: number }> = []
   for (let slot = 0; slot < slotCount; slot++) {

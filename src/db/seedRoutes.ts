@@ -35,7 +35,7 @@ const PLAZA_VIRGEN = { latitude: 39.4699, longitude: -0.3763 }
 const JARDIN_TURIA = { latitude: 39.4630, longitude: -0.3660 }
 const CIUDAD_ARTES = { latitude: 39.4548, longitude: -0.3534 }
 
-const DEFINITIONS: RouteDefinition[] = [
+export const DEFINITIONS: RouteDefinition[] = [
   { name: 'Azahar y sombra del Carmen', theme: 'botanica', lengthCategory: 'corta',
     start: PLAZA_VIRGEN, targetDistance: TARGETS.corta,
     description: 'Un paseo corto por el casco antiguo entre naranjos y árboles veteranos del inventario municipal, alrededor de la Plaza de la Virgen.' },
@@ -76,7 +76,7 @@ const DEFINITIONS: RouteDefinition[] = [
     description: 'La ruta recta por la avenida de la Marina hasta el mar, entre el arbolado urbano y las palmeras de la playa.' },
 ]
 
-async function generateWithRetry(definition: RouteDefinition) {
+export async function generateWithRetry(definition: RouteDefinition) {
   for (let intento = 0; intento < 3; intento++) {
     try {
       return await generateRoute({
