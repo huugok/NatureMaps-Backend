@@ -1,6 +1,6 @@
 # Nature MAPS — Backend
 
-API Express + TypeScript, PostgreSQL (Neon) y Drizzle ORM para un catálogo botánico de Valencia.
+API Express + TypeScript, PostgreSQL (Neon o local) y Drizzle ORM para un catálogo botánico de Valencia.
 Guarda plantas con especie, nombres por idioma, coordenadas e identificador; importa inventario
 municipal y conserva el enriquecimiento Wikipedia y la identificación Pl@ntNet.
 
@@ -27,7 +27,10 @@ del inventario. Son líneas previstas, no integraciones ya disponibles ni fechas
 npm.cmd install
 ```
 
-Copia `.env.example` a `.env` y completa `DATABASE_URL` localmente desde **Connect** de Neon.
+Configura `DATABASE_URL` en `.env` con una conexión de Neon o PostgreSQL local. Para local puedes
+usar, por ejemplo, `postgresql://usuario:contraseña@localhost:5433/nature_maps`; crea antes esa base
+y asegúrate de que PostgreSQL escucha en el puerto indicado. El backend elige el driver según el
+host y `db:migrate` crea/aplica las tablas pendientes.
 `PORT` es opcional (3000 por defecto). `VALHALLA_URL` (motor de rutas para generar el catálogo;
 demo FOSSGIS por defecto) solo la usa `db:seed:routes`, no la API en marcha. No publiques `.env`.
 En PowerShell usa `npm.cmd` si la política bloquea `npm.ps1`.
@@ -38,9 +41,9 @@ En PowerShell usa `npm.cmd` si la política bloquea `npm.ps1`.
 node docs/check-db.mjs
 ```
 
-Carga `.env` y ejecuta `SELECT 1 AS ok, current_database() AS database`. No requiere servidor ni
-tablas y no modifica datos. Devuelve la base conectada; ante fallo termina con código 1 y un
-mensaje sin credenciales. Tiempo de espera máximo: 20 segundos.
+Carga `.env` y ejecuta `SELECT 1 AS ok, current_database() AS database`. Requiere que la base
+esté en marcha, no requiere tablas y no modifica datos. Devuelve la base conectada; ante fallo
+termina con código 1 y un mensaje sin credenciales. Tiempo de espera máximo: 20 segundos.
 
 ## Modelo y migración actual
 
