@@ -239,6 +239,10 @@ export const routes = pgTable('routes', {
   // Geometría completa del recorrido (ya decodificada de la polilínea de Valhalla).
   path: jsonb('path').$type<RoutePoint[]>().notNull(),
   generatedAt: timestamp('generated_at', { withTimezone: true }).defaultNow().notNull(),
+  // Sin login: usuario 1 hardcodeado. Origen «Predeterminado» para el catálogo
+  // y «Administración» para las rutas creadas desde la app; cambiar con login.
+  userId: integer('user_id').notNull().default(1),
+  origin: text('origen').notNull().default('Predeterminado'),
 }, (table) => [
   uniqueIndex('routes_name_unique').on(table.name),
   check('routes_theme_check', sql`${table.theme} in ('botanica', 'cultural', 'mixta', 'sponsor')`),
@@ -246,6 +250,7 @@ export const routes = pgTable('routes', {
   check('routes_length_category_check', sql`${table.lengthCategory} in ('corta', 'media', 'larga')`),
   check('routes_text_check', sql`length(trim(${table.name})) > 0 and length(trim(${table.description})) > 0`),
   check('routes_values_check', sql`${table.distanceMeters} > 0 and ${table.durationSeconds} > 0`),
+  check('routes_origin_check', sql`${table.origin} in ('Predeterminado', 'Administración')`),
   check('routes_json_check', sql`jsonb_typeof(${table.stops}) = 'array' and jsonb_typeof(${table.path}) = 'array' and jsonb_array_length(${table.path}) >= 2`),
   check('routes_coordinates_check', sql`${table.startLatitude} between -90 and 90 and ${table.startLongitude} between -180 and 180`),
 ])
