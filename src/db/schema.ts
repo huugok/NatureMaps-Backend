@@ -179,12 +179,29 @@ export const pois = pgTable('pois', {
   check('pois_image_check', sql`${table.imageUrl} is null or (${table.imageSourceUrl} is not null and ${table.imageAuthor} is not null and ${table.imageLicense} is not null and ${table.imageLicenseUrl} is not null and ${table.imageAttribution} is not null)`),
 ])
 
+/** Comercios patrocinadores: entidades propias, como plantas o POIs. Se cargan
+ *  al entrar al mapa y se pintan con el mismo punto que los POIs, en rosa. */
+export const sponsors = pgTable('sponsors', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  businessName: text('business_name').notNull(),
+  address: text('address').notNull(),
+  latitude: doublePrecision('latitude').notNull(),
+  longitude: doublePrecision('longitude').notNull(),
+}, (table) => [
+  uniqueIndex('sponsors_business_name_unique').on(table.businessName),
+  index('sponsors_coordinates_idx').on(table.latitude, table.longitude),
+  check('sponsors_text_check', sql`length(trim(${table.businessName})) > 0 and length(trim(${table.address})) > 0`),
+  check('sponsors_latitude_check', sql`${table.latitude} between -90 and 90`),
+  check('sponsors_longitude_check', sql`${table.longitude} between -180 and 180`),
+])
+
 // Catálogo de rutas botánico-culturales predefinidas. Cada fila es una ruta
 // calculada una vez con Valhalla (UT de rutas) y guardada tal cual: la ficha la
 // pinta sin volver a llamar al motor de rutas. `theme` es el contenido de las
 // paradas y `shape` la forma que quedó el recorrido (circular o lineal cuando
 // la zona no daba para cerrar el anillo).
-export type RouteStopKind = 'planta' | 'poi'
+export type RouteStopKind = 'planta' | 'poi' | 'sponsor'
 
 export type RouteStop = {
   kind: RouteStopKind
@@ -195,6 +212,9 @@ export type RouteStop = {
   /** Especie del catálogo cuando la parada es una planta identificada; null en
    * POIs y plantas sin enlazar. Permite abrir su ficha real desde el mapa. */
   speciesId: number | null
+  /** Nombre comercial y ubicación básica del patrocinador (solo `sponsor`). */
+  businessName?: string
+  sponsorLocation?: string
 }
 
 export type RoutePoint = { latitude: number, longitude: number }
@@ -221,7 +241,7 @@ export const routes = pgTable('routes', {
   generatedAt: timestamp('generated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   uniqueIndex('routes_name_unique').on(table.name),
-  check('routes_theme_check', sql`${table.theme} in ('botanica', 'cultural', 'mixta')`),
+  check('routes_theme_check', sql`${table.theme} in ('botanica', 'cultural', 'mixta', 'sponsor')`),
   check('routes_shape_check', sql`${table.shape} in ('circular', 'lineal')`),
   check('routes_length_category_check', sql`${table.lengthCategory} in ('corta', 'media', 'larga')`),
   check('routes_text_check', sql`length(trim(${table.name})) > 0 and length(trim(${table.description})) > 0`),

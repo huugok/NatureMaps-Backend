@@ -15,7 +15,7 @@ import type { ValhallaPoint } from './valhalla.js'
 // predefinidas lo llama una vez por ruta; el futuro `POST /routes` de rutas de
 // usuario llamará a este mismo método.
 
-export type RouteTheme = 'botanica' | 'cultural' | 'mixta'
+export type RouteTheme = 'botanica' | 'cultural' | 'mixta' | 'sponsor'
 export type RouteShape = 'circular' | 'lineal'
 
 export interface GenerateRouteOptions {
@@ -156,7 +156,12 @@ async function fetchCandidates(
       order by ${distance} asc limit 300`) : null,
   ].filter((query): query is NonNullable<typeof query> => query !== null)
 
-  const results = await Promise.all(queries)
+  const queries2 = content === 'sponsor' ? [...queries, db.execute<Candidate>(sql`
+    select 'sponsor'::text as kind, id, business_name as name,
+      business_name as "businessName", address as "sponsorLocation",
+      latitude, longitude, null::integer as "speciesId", 0 as distance
+    from sponsors`)] : queries
+  const results = await Promise.all(queries2)
   const candidates: Candidate[] = []
   for (const result of results) for (const row of result.rows) {
     if (row.kind === 'planta' || row.kind === 'poi') {
@@ -164,9 +169,23 @@ async function fetchCandidates(
         latitude: row.latitude, longitude: row.longitude,
         speciesId: (row as { speciesId?: number | null }).speciesId ?? null,
         distance: row.distance })
+    } else if (row.kind === 'sponsor') {
+      const meters = 6371000 * 2 * Math.asin(Math.sqrt(
+        Math.sin((row.latitude - start.latitude) * Math.PI / 360) ** 2
+        + Math.cos(start.latitude * Math.PI / 180) * Math.cos(row.latitude * Math.PI / 180)
+          * Math.sin((row.longitude - start.longitude) * Math.PI / 360) ** 2))
+      if (meters <= searchRadius) candidates.push({ ...row, distance: Math.round(meters) })
     }
   }
   return candidates
+}
+
+/** Campos de patrocinio solo cuando la parada es un comercio (evita `undefined`
+ *  en propiedades opcionales con `exactOptionalPropertyTypes`). */
+function sponsorFields(candidate: Candidate) {
+  return candidate.businessName !== undefined
+    ? { businessName: candidate.businessName, sponsorLocation: candidate.sponsorLocation ?? '' }
+    : {};
 }
 
 /** Contenido de cada hueco: en la mixta alternan planta y POI por construcción
@@ -174,6 +193,7 @@ async function fetchCandidates(
 function slotKind(slot: number, content: RouteTheme): RouteStopKind {
   if (content === 'botanica') return 'planta'
   if (content === 'cultural') return 'poi'
+  if (content === 'sponsor') return slot % 3 === 2 ? 'sponsor' : slot % 2 === 0 ? 'planta' : 'poi'
   return slot % 2 === 0 ? 'planta' : 'poi'
 }
 
@@ -227,10 +247,12 @@ function pickRing(candidates: Candidate[], start: { latitude: number, longitude:
   const pools: Record<RouteStopKind, Candidate[]> = {
     planta: withoutExcluded(candidates.filter((candidate) => candidate.kind === 'planta'), excluded),
     poi: withoutExcluded(candidates.filter((candidate) => candidate.kind === 'poi'), excluded),
+    sponsor: withoutExcluded(candidates.filter((candidate) => candidate.kind === 'sponsor'), excluded),
   }
   const toStop = (candidate: Candidate): { stop: RouteStop, angle: number } => ({
     stop: { kind: candidate.kind, id: candidate.id, name: candidate.name,
-      latitude: candidate.latitude, longitude: candidate.longitude, speciesId: candidate.speciesId },
+      latitude: candidate.latitude, longitude: candidate.longitude, speciesId: candidate.speciesId,
+      ...sponsorFields(candidate) },
     angle: angleOf(project(start, candidate)),
   })
   const scoreOf = (candidate: Candidate, ideal: Plane) => {
@@ -302,7 +324,10 @@ function pickLinear(candidates: Candidate[], start: { latitude: number, longitud
     const axial = along(entry.point)
     if (axial > extent) return null
     // Puntaje: acercarse al ideal a lo largo del corredor y poco desvío lateral.
-    return Math.abs(axial - idealDistance) + sideways(entry.point)
+    // El desvío lateral pesa el triple: sin eso una parada al otro lado del
+    // corredor provoca un zigzag (la ruta parece salir del centro en varias
+    // direcciones en vez de avanzar en una).
+    return Math.abs(axial - idealDistance) + 3 * sideways(entry.point)
   }
   const stops: Array<{ stop: RouteStop, distance: number }> = []
   for (let slot = 0; slot < slotCount; slot++) {
@@ -318,7 +343,8 @@ function pickLinear(candidates: Candidate[], start: { latitude: number, longitud
     used.add(chosen)
     const entry = byCandidate.get(chosen)
     stops.push({ stop: { kind: chosen.kind, id: chosen.id, name: chosen.name,
-      latitude: chosen.latitude, longitude: chosen.longitude, speciesId: chosen.speciesId },
+      latitude: chosen.latitude, longitude: chosen.longitude, speciesId: chosen.speciesId,
+      ...sponsorFields(chosen) },
       distance: entry ? along(entry.point) : chosen.distance })
   }
   // Orden de ida: de la parada más cercana a la más lejana.
@@ -347,7 +373,7 @@ function pickLinear(candidates: Candidate[], start: { latitude: number, longitud
  * de verdad y la traza sale redonda si las paradas van pegadas al anillo. Se
  * avisa de qué tramo hace «ida y vuelta» por la misma calle (el índice del
  * peor) para poder apartar esa parada y repetir. */
-async function routeChain(waypoints: ValhallaPoint[]): Promise<{ distanceMeters: number, durationSeconds: number, path: RoutePoint[], worstLeg: number }> {
+export async function routeChain(waypoints: ValhallaPoint[]): Promise<{ distanceMeters: number, durationSeconds: number, path: RoutePoint[], worstLeg: number }> {
   const round = (value: number) => Math.round(value * 1e6) / 1e6
   const path: RoutePoint[] = []
   const legScores: number[] = []
@@ -435,6 +461,21 @@ export async function generateRoute(options: GenerateRouteOptions): Promise<Gene
     } else {
       shape = 'lineal'
       stops = pickLinear(candidates, start, target * scale, content, excluded)
+    }
+    // Una ruta patrocinada debe incluir siempre comercios: si el corredor los
+    // dejó fuera, se cambian dos paradas por los dos más cercanos al inicio.
+    if (content === 'sponsor') {
+      const unused = candidates
+        .filter((candidate) => candidate.kind === 'sponsor' && !stops.some((stop) => stop.id === candidate.id))
+        .sort((a, b) => a.distance - b.distance)
+      for (const slot of [1, 3]) {
+        const sponsor = unused.shift()
+        if (!sponsor || !stops[slot]) continue
+        stops[slot] = { kind: 'sponsor', id: sponsor.id, name: sponsor.name,
+          latitude: sponsor.latitude, longitude: sponsor.longitude, speciesId: null,
+          businessName: sponsor.businessName ?? sponsor.name,
+          sponsorLocation: sponsor.sponsorLocation ?? '' }
+      }
     }
     // La ruta empieza en una parada real. El `start` pedido es solo el centro
     // desde el que se buscan paradas: puede no ser un punto del mapa y nunca

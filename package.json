@@ -31,7 +31,8 @@
     "test:routes": "tsx --test tests/routes.test.mjs",
     "test:zonas-verdes": "tsx --test tests/green-areas.test.mjs",
     "test:nombres": "tsx --test tests/name-encoding.test.mjs",
-    "test:lookup": "tsx --test tests/species-lookup.test.mjs"
+    "test:lookup": "tsx --test tests/species-lookup.test.mjs",
+    "db:seed:sponsors": "tsx src/db/seedSponsors.ts"
   },
   "repository": {
     "type": "git",
