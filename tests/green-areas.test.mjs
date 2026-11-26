@@ -308,6 +308,35 @@ test('zonas verdes y contenido editorial (NM-08)', async (t) => {
       assert.equal((await request('/editorial?lang=ca')).body.articles.filter((article) => article.slug === 'jardin-de-las-hesperides').length, 1)
     })
 
+    await t.test('contenido cultural: temas, traducciones y fechas de las fuentes', async () => {
+      const articles = [
+        { topic: 'historia', slug: 'valencia-y-la-seda', consulted: '17/11/2026' },
+        { topic: 'entorno-urbano', slug: 'arquitectura-y-vida-urbana', consulted: '19/11/2026' },
+        { topic: 'tradiciones', slug: 'fallas-tradicion-y-barrio', consulted: '19/11/2026' },
+        { topic: 'gastronomia', slug: 'arroces-y-horchata', consulted: '19/11/2026' },
+      ]
+      for (const { topic, slug, consulted } of articles) {
+        const list = await request(`/editorial?topic=${topic}&lang=es`)
+        assert.equal(list.status, 200)
+        assert.ok(list.body.articles.some((article) => article.slug === slug))
+        assert.ok(list.body.articles.every((article) => article.topic === topic))
+        for (const language of ['es', 'ca', 'en']) {
+          const detail = await request(`/editorial/${slug}?lang=${language}`)
+          assert.equal(detail.status, 200)
+          assert.equal(detail.body.topic, topic)
+          assert.equal(detail.body.language, language)
+          assert.ok(typeof detail.body.body === 'string' && detail.body.body.trim().length > 0)
+          assert.ok(detail.body.sources.some((source) => source.url.startsWith('https://')
+            && source.description.includes(consulted)))
+        }
+      }
+      // Las fuentes originales conservan su fecha al admitir fechas individuales.
+      const flora = await request('/editorial/flora-caracteristica-de-valencia?lang=es')
+      assert.equal(flora.status, 200)
+      assert.ok(flora.body.sources.length > 0)
+      assert.ok(flora.body.sources.every((source) => source.description.includes('12/11/2026')))
+    })
+
     await t.test('la ficha de zona y la capa enlazan sus artículos', async () => {
       const detail = await request('/green-areas/group/jardin-de-las-hesperides')
       assert.deepEqual(detail.body.articles.map((article) => article.slug), ['jardin-de-las-hesperides'])

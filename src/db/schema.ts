@@ -123,6 +123,24 @@ export const speciesProfiles = pgTable('species_profiles', {
   check('species_profiles_language_check', sql`length(trim(${table.language})) > 0`),
 ])
 
+// Periodos observados/curados de floración. Una especie puede florecer en más
+// de un intervalo y cada intervalo conserva su procedencia y ámbito geográfico.
+export const speciesFloweringPeriods = pgTable('species_flowering_periods', {
+  id: serial('id').primaryKey(),
+  speciesId: integer('species_id').notNull().references(() => species.id, { onDelete: 'cascade' }),
+  startMonth: integer('start_month').notNull(),
+  endMonth: integer('end_month').notNull(),
+  region: text('region').notNull(),
+  sourceName: text('source_name').notNull(),
+  sourceUrl: text('source_url').notNull(),
+}, (table) => [
+  index('species_flowering_periods_species_idx').on(table.speciesId),
+  index('species_flowering_periods_months_idx').on(table.startMonth, table.endMonth),
+  check('species_flowering_periods_month_check', sql`${table.startMonth} between 1 and 12 and ${table.endMonth} between 1 and 12`),
+  check('species_flowering_periods_region_check', sql`length(trim(${table.region})) > 0 and length(trim(${table.sourceName})) > 0 and length(trim(${table.sourceUrl})) > 0`),
+  uniqueIndex('species_flowering_periods_unique').on(table.speciesId, table.startMonth, table.endMonth, table.region, table.sourceUrl),
+])
+
 // Puntos de interés histórico-culturales del mapa (NM-06, PA 2859-2861). Una
 // fila por elemento del geoportal municipal; la descripción y la imagen se
 // enriquecen desde Wikidata/Wikimedia con sus créditos, como en species_enrichments.
@@ -161,12 +179,29 @@ export const pois = pgTable('pois', {
   check('pois_image_check', sql`${table.imageUrl} is null or (${table.imageSourceUrl} is not null and ${table.imageAuthor} is not null and ${table.imageLicense} is not null and ${table.imageLicenseUrl} is not null and ${table.imageAttribution} is not null)`),
 ])
 
+/** Comercios patrocinadores: entidades propias, como plantas o POIs. Se cargan
+ *  al entrar al mapa y se pintan con el mismo punto que los POIs, en rosa. */
+export const sponsors = pgTable('sponsors', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  businessName: text('business_name').notNull(),
+  address: text('address').notNull(),
+  latitude: doublePrecision('latitude').notNull(),
+  longitude: doublePrecision('longitude').notNull(),
+}, (table) => [
+  uniqueIndex('sponsors_business_name_unique').on(table.businessName),
+  index('sponsors_coordinates_idx').on(table.latitude, table.longitude),
+  check('sponsors_text_check', sql`length(trim(${table.businessName})) > 0 and length(trim(${table.address})) > 0`),
+  check('sponsors_latitude_check', sql`${table.latitude} between -90 and 90`),
+  check('sponsors_longitude_check', sql`${table.longitude} between -180 and 180`),
+])
+
 // Catálogo de rutas botánico-culturales predefinidas. Cada fila es una ruta
 // calculada una vez con Valhalla (UT de rutas) y guardada tal cual: la ficha la
 // pinta sin volver a llamar al motor de rutas. `theme` es el contenido de las
 // paradas y `shape` la forma que quedó el recorrido (circular o lineal cuando
 // la zona no daba para cerrar el anillo).
-export type RouteStopKind = 'planta' | 'poi'
+export type RouteStopKind = 'planta' | 'poi' | 'sponsor'
 
 export type RouteStop = {
   kind: RouteStopKind
@@ -177,6 +212,9 @@ export type RouteStop = {
   /** Especie del catálogo cuando la parada es una planta identificada; null en
    * POIs y plantas sin enlazar. Permite abrir su ficha real desde el mapa. */
   speciesId: number | null
+  /** Nombre comercial y ubicación básica del patrocinador (solo `sponsor`). */
+  businessName?: string
+  sponsorLocation?: string
 }
 
 export type RoutePoint = { latitude: number, longitude: number }
@@ -203,7 +241,7 @@ export const routes = pgTable('routes', {
   generatedAt: timestamp('generated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   uniqueIndex('routes_name_unique').on(table.name),
-  check('routes_theme_check', sql`${table.theme} in ('botanica', 'cultural', 'mixta')`),
+  check('routes_theme_check', sql`${table.theme} in ('botanica', 'cultural', 'mixta', 'sponsor')`),
   check('routes_shape_check', sql`${table.shape} in ('circular', 'lineal')`),
   check('routes_length_category_check', sql`${table.lengthCategory} in ('corta', 'media', 'larga')`),
   check('routes_text_check', sql`length(trim(${table.name})) > 0 and length(trim(${table.description})) > 0`),
@@ -293,6 +331,6 @@ export const editorialArticles = pgTable('editorial_articles', {
   index('editorial_articles_topic_idx').on(table.topic),
   index('editorial_articles_group_idx').on(table.greenAreaGroup),
   check('editorial_articles_text_check', sql`length(trim(${table.slug})) > 0 and length(trim(${table.language})) > 0 and length(trim(${table.title})) > 0 and length(trim(${table.summary})) > 0 and length(trim(${table.body})) > 0`),
-  check('editorial_articles_topic_check', sql`${table.topic} in ('flora', 'parques', 'jardines', 'paisajismo')`),
+  check('editorial_articles_topic_check', sql`${table.topic} in ('flora', 'parques', 'jardines', 'paisajismo', 'historia', 'entorno-urbano', 'tradiciones', 'gastronomia')`),
   check('editorial_articles_sources_check', sql`jsonb_typeof(${table.sources}) = 'array' and jsonb_array_length(${table.sources}) > 0`),
 ])

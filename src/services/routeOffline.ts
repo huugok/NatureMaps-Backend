@@ -24,11 +24,19 @@ export async function getRouteOffline(id: number, language: string) {
         species.set(plant.speciesId, await getSpeciesDetail(plant.speciesId, language, 50, 0))
       }
       stops.push({ kind: stop.kind, id: stop.id, plant, poi: null })
-    } else {
+    } else if (stop.kind === 'poi') {
       if (!pois.has(stop.id)) pois.set(stop.id, await getPoi(stop.id, language))
       const poi = pois.get(stop.id)
       if (!poi) throw new CatalogError(409, 'La ruta contiene una parada que ya no existe')
       stops.push({ kind: stop.kind, id: stop.id, plant: null, poi })
+    } else {
+      // El catálogo ya incluye los datos básicos del comercio en la parada;
+      // no se debe buscar su ID en la tabla de POIs.
+      stops.push({ kind: stop.kind, id: stop.id, plant: null, poi: null, sponsor: {
+        name: stop.name,
+        businessName: stop.businessName ?? stop.name,
+        sponsorLocation: stop.sponsorLocation ?? '',
+      } })
     }
   }
   // Las mismas fotos pueden aparecer en varias paradas/especies.

@@ -19,6 +19,11 @@ function selectSpecies(condition: SQL, limit: number, offset: number, language: 
         'language', p.language, 'description', p.description, 'family', p.family,
         'flowering', p.flowering, 'curiosity', p.curiosity, 'sources', p.sources
       ) end as profile,
+      coalesce((select jsonb_agg(jsonb_build_object(
+        'startMonth', fp.start_month, 'endMonth', fp.end_month, 'region', fp.region,
+        'sourceName', fp.source_name, 'sourceUrl', fp.source_url
+      ) order by fp.start_month, fp.end_month)
+        from species_flowering_periods fp where fp.species_id = s.id), '[]'::jsonb) as "floweringPeriods",
       case when e.id is not null then jsonb_build_object(
         'language', e.language, 'content', coalesce(e.extract, e.description),
         'source', e.source, 'url', e.source_url, 'license', e.license, 'licenseUrl', e.license_url
@@ -40,12 +45,20 @@ function selectSpecies(condition: SQL, limit: number, offset: number, language: 
   `)
 }
 
-export async function listSpecies(limit: number, offset: number, language: string) {
+export async function listSpecies(limit: number, offset: number, language: string, month?: number, region?: string) {
+  const condition = month === undefined ? sql`true` : sql`exists (
+    select 1 from species_flowering_periods fp where fp.species_id = s.id
+    ${region === undefined ? sql`` : sql`and lower(fp.region) = lower(${region})`}
+    and (case when fp.start_month <= fp.end_month
+      then ${month} between fp.start_month and fp.end_month
+      else ${month} >= fp.start_month or ${month} <= fp.end_month end)
+  )`
   const [rows, count] = await Promise.all([
-    selectSpecies(sql`true`, limit, offset, language),
-    db.execute<{ total: number }>(sql`select count(*)::int as total from species`),
+    selectSpecies(condition, limit, offset, language),
+    db.execute<{ total: number }>(sql`select count(*)::int as total from species s where ${condition}`),
   ])
-  return { total: count.rows[0]?.total ?? 0, returned: rows.rows.length, limit, offset, species: rows.rows }
+  return { total: count.rows[0]?.total ?? 0, returned: rows.rows.length, limit, offset,
+    month: month ?? null, region: region ?? null, species: rows.rows }
 }
 
 export async function getSpecies(id: number, language: string) {

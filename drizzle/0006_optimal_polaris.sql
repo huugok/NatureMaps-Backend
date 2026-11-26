@@ -1,0 +1,2 @@
+ALTER TABLE "editorial_articles" DROP CONSTRAINT "editorial_articles_topic_check";--> statement-breakpoint
+ALTER TABLE "editorial_articles" ADD CONSTRAINT "editorial_articles_topic_check" CHECK ("editorial_articles"."topic" in ('flora', 'parques', 'jardines', 'paisajismo', 'historia', 'entorno-urbano', 'tradiciones', 'gastronomia'));

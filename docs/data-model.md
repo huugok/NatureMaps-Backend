@@ -15,6 +15,7 @@ integración Pl@ntNet de `main`. Las fuentes futuras son contexto, no funcionali
 | `plant_names` | Nombre común de un ejemplar y su idioma (`es`, `ca`, etc.). |
 | `species_enrichments` | Descripción breve y extracto Wikipedia por especie/idioma, URL del artículo, Wikidata ID, fecha y foto opcional con créditos. |
 | `species_profiles` | Ficha editorial curada por especie/idioma: descripción, familia, floración, curiosidad y fuentes (`jsonb`). Texto verificado por el equipo; la foto sigue viniendo de `species_enrichments`. |
+| `species_flowering_periods` | Rangos de meses por especie y región, con fuente y enlace por registro; permite filtrar sin interpretar texto. |
 | `pois` | POIs histórico-culturales del mapa (NM-06): nombre oficial, categoría (`monumento`, `recurso-turistico`), coordenadas, fuente y enlace al registro; descripción e imagen con sus créditos cuando están curadas. |
 | `poi_profiles` | Texto de la ficha del POI por idioma (extracto de Wikipedia con licencia, hasta que NM-09 traiga contenido propio). |
 | `routes` | Catálogo de rutas botánico-culturales predefinidas (migración `0004_far_payback`): nombre único, tema (`botanica`/`cultural`/`mixta`), forma (`circular`/`lineal`), categoría de longitud (`corta`/`media`/`larga`), distancia y duración medidas por Valhalla, punto de inicio, descripción, `stops` (jsonb, paradas en orden con kind/id/nombre/coords/`speciesId`) y `path` (jsonb, geometría ya decodificada). La ficha se pinta desde BD sin llamar al motor de rutas. El `speciesId` de la parada (planta) permite abrir su ficha real desde el frontend. |
@@ -26,7 +27,7 @@ todavía no utiliza ningún flujo. Pl@ntNet identifica fotografías; no persiste
 La cartografía offline no es una tabla de catálogo ni un archivo del backend.
 El navegador descarga las teselas directamente del proveedor y las guarda en
 Cache API; el contenido de la ruta y las imágenes se guardan en IndexedDB.
-`0007_remove_offline_maps` retira la antigua tabla creada por `0006`, sin cambiar
+`0011_remove_offline_maps` retira la antigua tabla creada por `0006`, sin cambiar
 plantas, rutas ni contenido editorial. El uso educativo del servidor público
 OSM para precarga offline incumple su política; véase la limitación del README.
 
@@ -36,6 +37,7 @@ erDiagram
   plant_locations ||--o{ plant_names : tiene
   species ||--o{ species_enrichments : describe
   species ||--o{ species_profiles : documenta
+  species ||--o{ species_flowering_periods : florece
 ```
 
 Ejemplo: cuatro adelfas tienen cuatro filas en `plant_locations`, sus nombres es/ca en
@@ -111,6 +113,11 @@ ejecución y endpoints en el [README](../README.md).
 - `GET /trees/:id`: añade nombres disponibles, distrito/barrio, enlace/fecha de origen, `dataSource` (licencia, atribución, logo y fecha de descarga; `null` hasta la primera importación) y `species`.
 - `GET /sources`, `GET /sources/:code`: fuentes registradas; el detalle incluye `storedRecords`.
 - `GET /species`: nombres distintos y enriquecimiento disponible, o campos `NULL` si falta.
+- `GET /species?month=4&region=Valencia` filtra especies con algún rango de floración que incluya
+  abril en esa región. El filtro se aplica antes de `limit`/`offset`. Las respuestas incluyen
+  `floweringPeriods` (`startMonth`, `endMonth`, `region`, `sourceName`, `sourceUrl`) y los metadatos
+  solicitados `month` y `region`. Se admiten periodos que cruzan diciembre. Si no hay una referencia
+  verificable, no se asignan meses y la especie no aparece en el filtro.
 - `GET /species/:id`: ficha completa de una especie: fila del catálogo (con perfil editorial y
   enriquecimiento resueltos por idioma, `content` ya resuelto con la precedencia editorial →
   Wikipedia) y `locations` con el total y los ejemplares reales de la especie, paginados por

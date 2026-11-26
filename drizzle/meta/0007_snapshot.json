@@ -1,6 +1,6 @@
 {
-  "id": "9ee09398-602a-4a99-97ba-d7de5b47b791",
-  "prevId": "37a200e1-c745-4c9b-8aa0-bf7b72b9481f",
+  "id": "7c183ba7-3cf4-41ca-9fea-8c06f5637c76",
+  "prevId": "10264b5f-a2fc-4cdc-877d-0e10778c38dc",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -228,7 +228,7 @@
         },
         "editorial_articles_topic_check": {
           "name": "editorial_articles_topic_check",
-          "value": "\"editorial_articles\".\"topic\" in ('flora', 'parques', 'jardines', 'paisajismo')"
+          "value": "\"editorial_articles\".\"topic\" in ('flora', 'parques', 'jardines', 'paisajismo', 'historia', 'entorno-urbano', 'tradiciones', 'gastronomia')"
         },
         "editorial_articles_sources_check": {
           "name": "editorial_articles_sources_check",
@@ -1392,6 +1392,160 @@
         "species_enrichments_image_check": {
           "name": "species_enrichments_image_check",
           "value": "\"species_enrichments\".\"image_url\" is null or (\"species_enrichments\".\"image_source_url\" is not null and \"species_enrichments\".\"image_author\" is not null and \"species_enrichments\".\"image_license\" is not null and \"species_enrichments\".\"image_license_url\" is not null and \"species_enrichments\".\"image_attribution\" is not null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.species_flowering_periods": {
+      "name": "species_flowering_periods",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "species_id": {
+          "name": "species_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_month": {
+          "name": "start_month",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end_month": {
+          "name": "end_month",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "region": {
+          "name": "region",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_name": {
+          "name": "source_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_url": {
+          "name": "source_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "species_flowering_periods_species_idx": {
+          "name": "species_flowering_periods_species_idx",
+          "columns": [
+            {
+              "expression": "species_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "species_flowering_periods_months_idx": {
+          "name": "species_flowering_periods_months_idx",
+          "columns": [
+            {
+              "expression": "start_month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "end_month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "species_flowering_periods_unique": {
+          "name": "species_flowering_periods_unique",
+          "columns": [
+            {
+              "expression": "species_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "start_month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "end_month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "region",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "source_url",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "species_flowering_periods_species_id_species_id_fk": {
+          "name": "species_flowering_periods_species_id_species_id_fk",
+          "tableFrom": "species_flowering_periods",
+          "tableTo": "species",
+          "columnsFrom": [
+            "species_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "species_flowering_periods_month_check": {
+          "name": "species_flowering_periods_month_check",
+          "value": "\"species_flowering_periods\".\"start_month\" between 1 and 12 and \"species_flowering_periods\".\"end_month\" between 1 and 12"
+        },
+        "species_flowering_periods_region_check": {
+          "name": "species_flowering_periods_region_check",
+          "value": "length(trim(\"species_flowering_periods\".\"region\")) > 0 and length(trim(\"species_flowering_periods\".\"source_name\")) > 0 and length(trim(\"species_flowering_periods\".\"source_url\")) > 0"
         }
       },
       "isRLSEnabled": false

@@ -54,8 +54,36 @@
     {
       "idx": 7,
       "version": "7",
-      "when": 1795719052025,
-      "tag": "0007_remove_offline_maps",
+      "when": 1795283122102,
+      "tag": "0006_optimal_polaris",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795288857044,
+      "tag": "0007_flowering_periods",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795549082307,
+      "tag": "0008_sponsored_routes",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795549654969,
+      "tag": "0009_sponsors",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795734792559,
+      "tag": "0011_remove_offline_maps",
       "breakpoints": true
     }
   ]

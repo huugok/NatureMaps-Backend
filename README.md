@@ -6,7 +6,9 @@
 (`schemaVersion: 3`) con geometría, paradas, fichas de plantas y POIs,
 imágenes referenciadas con sus créditos y una revisión del contenido.
 El idioma valenciano `va` se resuelve como `ca`; los textos disponibles
-conservan su idioma y procedencia. Si una parada ya no existe, responde 409.
+conservan su idioma y procedencia. Si una planta o POI referenciado ya no
+existe, responde 409. Las paradas patrocinadas conservan el nombre comercial
+y la ubicación básica que proporciona el catálogo de rutas.
 
 El frontend descarga las imágenes y las teselas directamente de sus fuentes.
 Guarda recorrido, fichas e imágenes en IndexedDB y el mapa en Cache API,

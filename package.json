@@ -6,12 +6,13 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "dev:local": "tsx scripts/dev-local.mjs",
-    "dev:route-offline": "tsx scripts/dev-route-offline.mjs",
     "build": "tsc",
     "test": "npm run test:catalog && npm run test:pois && npm run test:profiles && npm run test:routes && npm run test:routes:offline && npm run test:zonas-verdes && npm run test:lookup && npm run test:nombres",
-    "test:routes:offline": "tsx --test tests/route-offline.test.mjs",
     "test:catalog": "tsx --test tests/catalog.test.mjs",
     "import:arbolado": "tsx src/scripts/import-inventory.ts",
+    "import:floracion": "tsx src/scripts/import-flowering-periods.ts",
+    "report:floracion": "tsx src/scripts/report-flowering-coverage.ts",
+    "enrich:floracion:imagenes": "tsx src/scripts/enrich-flowering-images.ts",
     "repair:nombres": "tsx src/scripts/repair-names.ts",
     "import:pois": "tsx src/scripts/import-pois.ts",
     "import:zonas-verdes": "tsx src/scripts/import-green-areas.ts",
@@ -30,7 +31,10 @@
     "test:routes": "tsx --test tests/routes.test.mjs",
     "test:zonas-verdes": "tsx --test tests/green-areas.test.mjs",
     "test:nombres": "tsx --test tests/name-encoding.test.mjs",
-    "test:lookup": "tsx --test tests/species-lookup.test.mjs"
+    "test:lookup": "tsx --test tests/species-lookup.test.mjs",
+    "db:seed:sponsors": "tsx src/db/seedSponsors.ts",
+    "dev:route-offline": "tsx scripts/dev-route-offline.mjs",
+    "test:routes:offline": "tsx --test tests/route-offline.test.mjs tests/route-offline-migrations.test.mjs"
   },
   "repository": {
     "type": "git",

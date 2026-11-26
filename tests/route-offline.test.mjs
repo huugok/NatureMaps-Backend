@@ -21,7 +21,9 @@ test('paquete offline de rutas: datos reales, créditos, idioma y validación HT
       values ('Torre', 'monumento', 39.471, -0.381, 'TEST', '1', 'https://example.test/poi') returning id`)).rows[0]
     const stops = [{ kind: 'planta', id: plantId, speciesId, name: 'Naranjo', latitude: 39.47, longitude: -0.38 },
       { kind: 'poi', id: poiId, speciesId: null, name: 'Torre', latitude: 39.471, longitude: -0.381 },
-      { kind: 'planta', id: plantId, speciesId, name: 'Naranjo', latitude: 39.47, longitude: -0.38 }]
+      { kind: 'planta', id: plantId, speciesId, name: 'Naranjo', latitude: 39.47, longitude: -0.38 },
+      { kind: 'sponsor', id: 999, speciesId: null, name: 'Tienda', businessName: 'Comercio de prueba',
+        sponsorLocation: 'Calle de prueba 1', latitude: 39.471, longitude: -0.381 }]
     const { id } = (await pg.query(`insert into routes (name, theme, shape, length_category, distance_meters,
       duration_seconds, start_latitude, start_longitude, description, stops, path)
       values ('Ruta', 'mixta', 'circular', 'corta', 2000, 1800, 39.47, -0.38, 'Prueba', $1, $2) returning id`,
@@ -38,8 +40,9 @@ test('paquete offline de rutas: datos reales, créditos, idioma y validación HT
     assert.equal(packet.language, 'ca')
     assert.equal(packet.schemaVersion, 3)
     assert.equal(packet.map, undefined)
-    assert.equal(packet.route.path.length, 3)
-    assert.deepEqual(packet.stops.map((s) => s.kind), ['planta', 'poi', 'planta'])
+    assert.equal(packet.route.path.length, 4)
+    assert.deepEqual(packet.stops.map((s) => s.kind), ['planta', 'poi', 'planta', 'sponsor'])
+    assert.deepEqual(packet.stops[3].sponsor, { name: 'Tienda', businessName: 'Comercio de prueba', sponsorLocation: 'Calle de prueba 1' })
     assert.equal(packet.species.length, 1)
     assert.equal(packet.species[0].profile.description, 'Taronger')
     assert.equal(packet.stops[1].poi.sourceUrl, 'https://example.test/poi')

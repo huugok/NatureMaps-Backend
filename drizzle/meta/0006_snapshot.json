@@ -1,6 +1,6 @@
 {
-  "id": "37a200e1-c745-4c9b-8aa0-bf7b72b9481f",
-  "prevId": "1a2154ae-9555-40b2-b2b5-bb42efc9826e",
+  "id": "10264b5f-a2fc-4cdc-877d-0e10778c38dc",
+  "prevId": "1db54a17-803e-4945-a4c2-f76aa4197eb5",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -228,7 +228,7 @@
         },
         "editorial_articles_topic_check": {
           "name": "editorial_articles_topic_check",
-          "value": "\"editorial_articles\".\"topic\" in ('flora', 'parques', 'jardines', 'paisajismo')"
+          "value": "\"editorial_articles\".\"topic\" in ('flora', 'parques', 'jardines', 'paisajismo', 'historia', 'entorno-urbano', 'tradiciones', 'gastronomia')"
         },
         "editorial_articles_sources_check": {
           "name": "editorial_articles_sources_check",
@@ -445,91 +445,6 @@
         "green_areas_bbox_check": {
           "name": "green_areas_bbox_check",
           "value": "\"green_areas\".\"min_latitude\" <= \"green_areas\".\"max_latitude\" and \"green_areas\".\"min_longitude\" <= \"green_areas\".\"max_longitude\" and \"green_areas\".\"latitude\" between -90 and 90 and \"green_areas\".\"longitude\" between -180 and 180"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.offline_maps": {
-      "name": "offline_maps",
-      "schema": "",
-      "columns": {
-        "code": {
-          "name": "code",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "sha256": {
-          "name": "sha256",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "byte_length": {
-          "name": "byte_length",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "bounds": {
-          "name": "bounds",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "min_zoom": {
-          "name": "min_zoom",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "max_zoom": {
-          "name": "max_zoom",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source_url": {
-          "name": "source_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "archive_base64": {
-          "name": "archive_base64",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "imported_at": {
-          "name": "imported_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "offline_maps_size_check": {
-          "name": "offline_maps_size_check",
-          "value": "\"offline_maps\".\"byte_length\" between 127 and 33554432"
-        },
-        "offline_maps_zoom_check": {
-          "name": "offline_maps_zoom_check",
-          "value": "\"offline_maps\".\"min_zoom\" >= 0 and \"offline_maps\".\"max_zoom\" between \"offline_maps\".\"min_zoom\" and 22"
-        },
-        "offline_maps_hash_check": {
-          "name": "offline_maps_hash_check",
-          "value": "\"offline_maps\".\"sha256\" ~ '^[a-f0-9]{64}$'"
-        },
-        "offline_maps_bounds_check": {
-          "name": "offline_maps_bounds_check",
-          "value": "jsonb_typeof(\"offline_maps\".\"bounds\") = 'array' and jsonb_array_length(\"offline_maps\".\"bounds\") = 4"
         }
       },
       "isRLSEnabled": false

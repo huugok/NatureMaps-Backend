@@ -71,7 +71,6 @@ npm run test:catalog   # Node Test Runner + tsx + PGlite; sin .env ni servicios 
 npm run test:pois      # suite de POIs (mismo harness PGlite)
 npm run test:profiles  # informe de curaduría (formato del `--dry-run`, sin base)
 npm run test:routes    # suite de rutas (generador con Valhalla simulado + catálogo)
-npm run test:routes:offline # paquete offline de rutas; PGlite, sin credenciales
 npm start              # node dist/index.js
 
 npm run db:generate    # migraciones SQL desde src/db/schema.ts -> drizzle/
@@ -317,8 +316,10 @@ como `ca`; `npm run test:routes:offline` prueba el contrato sobre PGlite.
 La cartografía se descarga directamente en el frontend y se conserva con Cache
 API, como las zonas, sin lecturas ni escrituras cartográficas en Neon. El README
 explica la limitación de la precarga desde el servidor público OSM de esta rama
-educativa. `0007_remove_offline_maps` elimina la antigua tabla; no reescribir
-`0006` ni aplicar migraciones compartidas antes de conciliar el journal con main.
+educativa. `0011_remove_offline_maps` elimina la antigua tabla con una migración incremental.
+El journal conserva el SQL aplicado y ordena las migraciones de ambas ramas
+por fecha; sus índices son únicos aunque dos SQL históricos empiecen por 0006.
+No aplicar migraciones a la base compartida durante la preparación local.
 No subir archivos cartográficos ni documentos temporales al repositorio.
 `npm run dev:route-offline` sirve un recorrido ficticio con PGlite e imagen local
 para probar la descarga desde el navegador sin cuota ni conexión a Neon.
