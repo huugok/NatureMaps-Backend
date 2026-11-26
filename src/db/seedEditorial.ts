@@ -117,5 +117,9 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
         + `en ${result.languages.join(', ')} (${result.linked} enlazados a una zona verde)`)
       process.exit(0)
     })
-    .catch((error: unknown) => { console.error('Seed editorial fallida:', error instanceof Error ? error.message : error); process.exit(1) })
+    .catch((error: unknown) => {
+      console.error('Seed editorial fallida:', error)
+      if (error instanceof Error && error.cause !== undefined) console.error('Causa:', error.cause)
+      process.exit(1)
+    })
 }
