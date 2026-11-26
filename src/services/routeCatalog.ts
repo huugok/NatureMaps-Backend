@@ -21,6 +21,8 @@ type RouteRow = {
   stops: RouteStop[]
   path: RoutePoint[] | null
   stopsCount: number
+  userId: number
+  origin: string
 }
 
 // El driver entrega el jsonb ya parseado, así que se usa tal cual.
@@ -37,6 +39,8 @@ function routeSummary(row: RouteRow) {
     start: { latitude: row.startLatitude, longitude: row.startLongitude },
     description: row.description,
     stopsCount: row.stopsCount,
+    userId: row.userId,
+    origin: row.origin,
   }
 }
 
@@ -54,7 +58,8 @@ export async function listRoutes() {
       distance_meters as "distanceMeters", duration_seconds as "durationSeconds",
       start_latitude as "startLatitude", start_longitude as "startLongitude",
       description, stops, null::jsonb as path,
-      jsonb_array_length(stops)::int as "stopsCount"
+      jsonb_array_length(stops)::int as "stopsCount",
+      user_id as "userId", origen as origin
     from routes order by distance_meters asc
   `)
   return { total: result.rows.length, routes: result.rows.map(routeSummary) }
@@ -66,7 +71,8 @@ export async function getRoute(id: number) {
       distance_meters as "distanceMeters", duration_seconds as "durationSeconds",
       start_latitude as "startLatitude", start_longitude as "startLongitude",
       description, stops, path,
-      jsonb_array_length(stops)::int as "stopsCount"
+      jsonb_array_length(stops)::int as "stopsCount",
+      user_id as "userId", origen as origin
     from routes where id = ${id} limit 1
   `)).rows[0]
   return row ? routeDetail(row) : null
