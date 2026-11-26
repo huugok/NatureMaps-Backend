@@ -9,25 +9,6 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
-// Paquete cartográfico descargable. El archivo pequeño de València se guarda
-// una vez en Neon; el navegador conserva su propia copia para usarla sin red.
-export const offlineMaps = pgTable('offline_maps', {
-  code: text('code').primaryKey(),
-  sha256: text('sha256').notNull(),
-  byteLength: integer('byte_length').notNull(),
-  bounds: jsonb('bounds').$type<[number, number, number, number]>().notNull(),
-  minZoom: integer('min_zoom').notNull(),
-  maxZoom: integer('max_zoom').notNull(),
-  sourceUrl: text('source_url').notNull(),
-  archiveBase64: text('archive_base64').notNull(),
-  importedAt: timestamp('imported_at', { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [
-  check('offline_maps_size_check', sql`${table.byteLength} between 127 and 33554432`),
-  check('offline_maps_zoom_check', sql`${table.minZoom} >= 0 and ${table.maxZoom} between ${table.minZoom} and 22`),
-  check('offline_maps_hash_check', sql`${table.sha256} ~ '^[a-f0-9]{64}$'`),
-  check('offline_maps_bounds_check', sql`jsonb_typeof(${table.bounds}) = 'array' and jsonb_array_length(${table.bounds}) = 4`),
-])
-
 // Fuente externa de datos: quién la publica, con qué licencia y cuándo se descargó por última vez.
 // `code` es el mismo valor que guardan species.source y plant_locations.source (texto, sin clave
 // foránea porque esas columnas ya existen como texto libre). Una fila por fuente, no por descarga.

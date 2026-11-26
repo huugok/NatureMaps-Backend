@@ -1,16 +1,41 @@
 # Nature MAPS — Backend
 
-Descarga de rutas: `GET /routes/:id/offline?lang=es|va|en` reúne geometría,
-paradas, fichas, créditos de imágenes y el mapa Protomaps (`schemaVersion: 2`).
-`npm run test:routes:offline` comprueba
-este contrato con PGlite, sin credenciales ni llamadas a APIs públicas.
+## Descarga de rutas sin conexión
 
-El mapa de València se guarda una vez en `offline_maps` (migración `0006`),
-con cobertura, procedencia y SHA-256. Se sirve por `GET /offline-maps/valencia`
-y por la URL versionada que devuelve ese endpoint (admite HTTP Range). Para
-importar o actualizar un archivo PMTiles preparado con `pmtiles extract`:
-`npm run import:mapa -- --file=valencia.pmtiles --source=https://build.protomaps.com/FECHA.pmtiles`.
-Con `--check` valida el archivo sin escribir. El archivo cartográfico no se commitea.
+`GET /routes/:id/offline?lang=es|va|en` devuelve un paquete de lectura
+(`schemaVersion: 3`) con geometría, paradas, fichas de plantas y POIs,
+imágenes referenciadas con sus créditos y una revisión del contenido.
+El idioma valenciano `va` se resuelve como `ca`; los textos disponibles
+conservan su idioma y procedencia. Si una parada ya no existe, responde 409.
+
+El frontend descarga las imágenes y las teselas directamente de sus fuentes.
+Guarda recorrido, fichas e imágenes en IndexedDB y el mapa en Cache API,
+con progreso, cancelación y eliminación. El backend reúne los datos del catálogo
+y no realiza la descarga de teselas.
+
+### Limitación del proveedor de mapas
+
+El frontend usa `tile.openstreetmap.org`. La sección 4 de su
+[Tile Usage Policy](https://operations.osmfoundation.org/policies/tiles/#4-prohibited-bulk-downloading-scraping-and-offline-use)
+prohíbe precargar teselas para uso offline. El botón de descarga calcula el
+rectángulo del recorrido y solicita teselas de varios niveles de zoom, incluidas
+las que el usuario no está viendo, para guardarlas y consultarlas después.
+Ese comportamiento incumple la sección 4; limitarlo a dos peticiones simultáneas
+no lo autoriza. El proveedor debe sustituirse por otro que permita esta descarga.
+
+### Comprobación local
+
+`npm run test:routes:offline` valida el contrato HTTP con PGlite y datos de
+prueba, sin credenciales ni llamadas a APIs públicas.
+`npm run dev:route-offline` inicia en el puerto 3000 una demostración con una
+ruta, paradas, fichas y una imagen ficticias en una base en memoria.
+Permite probar el frontend sin una base de datos remota; las teselas requieren
+conexión durante la descarga.
+
+En el frontend, ejecuta build y preview, descarga la ruta de prueba y espera
+«Disponible sin conexión». Desactiva la red y recarga para comprobar mapa,
+recorrido, fichas e imagen. Las instrucciones y la prueba automatizada de
+navegador están en el README del frontend.
 
 API Express + TypeScript, PostgreSQL (Neon) y Drizzle ORM para un catálogo botánico de Valencia.
 Guarda plantas con especie, nombres por idioma, coordenadas e identificador; importa inventario

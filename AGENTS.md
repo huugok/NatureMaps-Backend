@@ -313,11 +313,15 @@ configuración de protección y el versionado están en `docs/agents/git-workflo
 `GET /routes/:id/offline?lang=` reúne recorrido, paradas, fichas, procedencia y
 créditos. Es una lectura sin llamadas externas ni escrituras. `va` se resuelve
 como `ca`; `npm run test:routes:offline` prueba el contrato sobre PGlite.
-`schemaVersion: 2` exige un mapa registrado que cubra toda la geometría; 503 si
-falta y 409 si no cubre la ruta. `offline_maps` (`0006`) conserva un PMTiles
-vectorial de València en base64 (máximo 32 MiB binarios), cobertura, fuente y
-SHA-256. `npm run import:mapa -- --file=... --source=... [--check]` lo importa
-de forma idempotente. No subir archivos `.pmtiles` al repositorio.
+`schemaVersion: 3` entrega contenido sin metadatos ni archivos de mapa.
+La cartografía se descarga directamente en el frontend y se conserva con Cache
+API, como las zonas, sin lecturas ni escrituras cartográficas en Neon. El README
+explica la limitación de la precarga desde el servidor público OSM de esta rama
+educativa. `0007_remove_offline_maps` elimina la antigua tabla; no reescribir
+`0006` ni aplicar migraciones compartidas antes de conciliar el journal con main.
+No subir archivos cartográficos ni documentos temporales al repositorio.
+`npm run dev:route-offline` sirve un recorrido ficticio con PGlite e imagen local
+para probar la descarga desde el navegador sin cuota ni conexión a Neon.
 
 ### Issue tracker
 
