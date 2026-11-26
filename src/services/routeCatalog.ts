@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
+import { routeChain } from './routeGenerator.js'
 import type { RoutePoint, RouteStop } from '../db/schema.js'
 
 // Lectura del catálogo de rutas predefinidas. El listado es ligero (sin la
@@ -69,4 +70,49 @@ export async function getRoute(id: number) {
     from routes where id = ${id} limit 1
   `)).rows[0]
   return row ? routeDetail(row) : null
+}
+
+/** Tipos aceptados para modificar una ruta propia. La forma no se edita. */
+export type RouteUpdate = {
+  name: string
+  theme: string
+  description?: string
+  stops: RouteStop[]
+}
+
+function categoryFor(meters: number): string {
+  if (meters < 4000) return 'corta'
+  if (meters < 8000) return 'media'
+  return 'larga'
+}
+
+/** Guarda los cambios de una ruta: nombre, tema y paradas. El recorrido se
+ *  recalcula con Valhalla para que el mapa refleje exactamente lo editable. */
+export async function updateRoute(id: number, changes: RouteUpdate) {
+  const first = changes.stops[0]
+  if (!first || changes.stops.length < 2) throw new Error('La ruta necesita al menos dos paradas')
+  const existing = (await db.execute<{ id: number }>(sql`select id from routes where id = ${id} limit 1`)).rows[0]
+  if (!existing) return null
+  const routed = await routeChain([
+    ...changes.stops.map((stop) => ({ latitude: stop.latitude, longitude: stop.longitude })),
+    { latitude: first.latitude, longitude: first.longitude },
+  ])
+  await db.execute(sql`
+    update routes set
+      name = ${changes.name}, theme = ${changes.theme},
+      description = ${changes.description ?? ''},
+      stops = ${JSON.stringify(changes.stops)}::jsonb,
+      path = ${JSON.stringify(routed.path)}::jsonb,
+      distance_meters = ${routed.distanceMeters}, duration_seconds = ${routed.durationSeconds},
+      start_latitude = ${first.latitude}, start_longitude = ${first.longitude},
+      length_category = ${categoryFor(routed.distanceMeters)}, generated_at = now()
+    where id = ${id}
+  `)
+  return getRoute(id)
+}
+
+/** Borrado permanente de una ruta. */
+export async function deleteRoute(id: number): Promise<boolean> {
+  const result = await db.execute<{ id: number }>(sql`delete from routes where id = ${id} returning id`)
+  return result.rows.length > 0
 }
