@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
+import { routeChain } from './routeGenerator.js'
 import type { RoutePoint, RouteStop } from '../db/schema.js'
 
 // Lectura del catálogo de rutas predefinidas. El listado es ligero (sin la
@@ -69,4 +70,23 @@ export async function getRoute(id: number) {
     from routes where id = ${id} limit 1
   `)).rows[0]
   return row ? routeDetail(row) : null
+}
+
+/** Tramo de acceso desde la ubicación actual hasta el inicio de la ruta.
+ *  No modifica el recorrido guardado: solo devuelve la polilínea de entrada. */
+export async function routeAccess(id: number, from: { latitude: number, longitude: number }) {
+  const route = await getRoute(id)
+  if (!route || route.stops.length === 0) return null
+  const first = route.stops[0]
+  if (!first) return null
+  const routed = await routeChain([
+    { latitude: from.latitude, longitude: from.longitude },
+    { latitude: first.latitude, longitude: first.longitude },
+  ])
+  return {
+    path: routed.path,
+    distanceMeters: routed.distanceMeters,
+    durationSeconds: routed.durationSeconds,
+    start: { latitude: first.latitude, longitude: first.longitude },
+  }
 }
