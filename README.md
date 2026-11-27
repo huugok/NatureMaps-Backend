@@ -1,5 +1,41 @@
 # Nature MAPS — Backend
 
+## Servicios de mapas
+
+La precarga offline de rutas y parques con la fuente actual incumple el §4 de
+la política del servidor OSM. El [documento de problemas y alternativas](https://github.com/huugok/NatureMaps-Frontend/blob/feat/descarga-ruta-offline/docs/map-services-policy.md)
+detalla los puntos aplicables, la evidencia en el código y las propuestas con
+Geoapify Map Tiles y Geocoding API. El cambio de proveedor queda pendiente.
+
+## Descarga de rutas sin conexión
+
+`GET /routes/:id/offline?lang=es|va|en` devuelve un paquete de lectura
+(`schemaVersion: 3`) con geometría, paradas, fichas de plantas y POIs,
+imágenes referenciadas con sus créditos y una revisión del contenido.
+El idioma valenciano `va` se resuelve como `ca`; los textos disponibles
+conservan su idioma y procedencia. Si una planta o POI referenciado ya no
+existe, responde 409. Las paradas patrocinadas conservan el nombre comercial
+y la ubicación básica que proporciona el catálogo de rutas.
+
+El frontend descarga las imágenes y las teselas directamente de sus fuentes.
+Guarda recorrido, fichas e imágenes en IndexedDB y el mapa en Cache API,
+con progreso, cancelación y eliminación. El backend reúne los datos del catálogo
+y no realiza la descarga de teselas.
+
+### Comprobación local
+
+`npm run test:routes:offline` valida el contrato HTTP con PGlite y datos de
+prueba, sin credenciales ni llamadas a APIs públicas.
+`npm run dev:route-offline` inicia en el puerto 3000 una demostración con una
+ruta, paradas, fichas y una imagen ficticias en una base en memoria.
+Permite probar el frontend sin una base de datos remota; las teselas requieren
+conexión durante la descarga.
+
+En el frontend, ejecuta build y preview, descarga la ruta de prueba y espera
+«Disponible sin conexión». Desactiva la red y recarga para comprobar mapa,
+recorrido, fichas e imagen. Las instrucciones y la prueba automatizada de
+navegador están en el README del frontend.
+
 API Express + TypeScript, PostgreSQL (Neon) y Drizzle ORM para un catálogo botánico de Valencia.
 Guarda plantas con especie, nombres por idioma, coordenadas e identificador; importa inventario
 municipal y conserva el enriquecimiento Wikipedia y la identificación Pl@ntNet.

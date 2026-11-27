@@ -307,6 +307,22 @@ configuración de protección y el versionado están en `docs/agents/git-workflo
 
 ## Agent skills
 
+### Descarga de rutas
+
+`GET /routes/:id/offline?lang=` reúne recorrido, paradas, fichas, procedencia y
+créditos. Es una lectura sin llamadas externas ni escrituras. `va` se resuelve
+como `ca`; `npm run test:routes:offline` prueba el contrato sobre PGlite.
+`schemaVersion: 3` entrega contenido sin metadatos ni archivos de mapa.
+La cartografía se descarga directamente en el frontend y se conserva con Cache
+API, como las zonas, sin lecturas ni escrituras cartográficas en Neon. El README
+explica la limitación de la precarga desde el servidor público OSM de esta rama
+educativa. Esta tarea usa el esquema existente y no añade migraciones.
+`drizzle/` se mantiene igual que main; no ejecutar `db:migrate` ni `db:push`
+ni modificar datos de Neon como parte de esta tarea.
+No subir archivos cartográficos ni documentos temporales al repositorio.
+`npm run dev:route-offline` sirve un recorrido ficticio con PGlite e imagen local
+para probar la descarga desde el navegador sin cuota ni conexión a Neon.
+
 ### Issue tracker
 
 GitHub Issues vía `gh` (repo inferido del remote). See `docs/agents/issue-tracker.md`.

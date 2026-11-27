@@ -24,6 +24,13 @@ integración Pl@ntNet de `main`. Las fuentes futuras son contexto, no funcionali
 `users` es la séptima tabla, conservada del scaffold. No se añaden tablas de observaciones que
 todavía no utiliza ningún flujo. Pl@ntNet identifica fotografías; no persiste resultados.
 
+La cartografía offline no es una tabla de catálogo ni un archivo del backend.
+El navegador descarga las teselas directamente del proveedor y las guarda en
+Cache API; el contenido de la ruta y las imágenes se guardan en IndexedDB.
+La descarga de rutas utiliza el catálogo existente y no añade migraciones
+ni tablas. El uso educativo del servidor público
+OSM para precarga offline incumple su política; véase la limitación del README.
+
 ```mermaid
 erDiagram
   species ||--o{ plant_locations : agrupa
