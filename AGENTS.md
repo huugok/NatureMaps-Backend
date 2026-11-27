@@ -316,10 +316,9 @@ como `ca`; `npm run test:routes:offline` prueba el contrato sobre PGlite.
 La cartografía se descarga directamente en el frontend y se conserva con Cache
 API, como las zonas, sin lecturas ni escrituras cartográficas en Neon. El README
 explica la limitación de la precarga desde el servidor público OSM de esta rama
-educativa. `0011_remove_offline_maps` elimina la antigua tabla con una migración incremental.
-El journal conserva el SQL aplicado y ordena las migraciones de ambas ramas
-por fecha; sus índices son únicos aunque dos SQL históricos empiecen por 0006.
-No aplicar migraciones a la base compartida durante la preparación local.
+educativa. Esta tarea usa el esquema existente y no añade migraciones.
+`drizzle/` se mantiene igual que main; no ejecutar `db:migrate` ni `db:push`
+ni modificar datos de Neon como parte de esta tarea.
 No subir archivos cartográficos ni documentos temporales al repositorio.
 `npm run dev:route-offline` sirve un recorrido ficticio con PGlite e imagen local
 para probar la descarga desde el navegador sin cuota ni conexión a Neon.

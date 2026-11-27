@@ -34,7 +34,7 @@
     "test:lookup": "tsx --test tests/species-lookup.test.mjs",
     "db:seed:sponsors": "tsx src/db/seedSponsors.ts",
     "dev:route-offline": "tsx scripts/dev-route-offline.mjs",
-    "test:routes:offline": "tsx --test tests/route-offline.test.mjs tests/route-offline-migrations.test.mjs"
+    "test:routes:offline": "tsx --test tests/route-offline.test.mjs"
   },
   "repository": {
     "type": "git",

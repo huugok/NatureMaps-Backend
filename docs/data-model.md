@@ -27,8 +27,8 @@ todavía no utiliza ningún flujo. Pl@ntNet identifica fotografías; no persiste
 La cartografía offline no es una tabla de catálogo ni un archivo del backend.
 El navegador descarga las teselas directamente del proveedor y las guarda en
 Cache API; el contenido de la ruta y las imágenes se guardan en IndexedDB.
-`0011_remove_offline_maps` retira la antigua tabla creada por `0006`, sin cambiar
-plantas, rutas ni contenido editorial. El uso educativo del servidor público
+La descarga de rutas utiliza el catálogo existente y no añade migraciones
+ni tablas. El uso educativo del servidor público
 OSM para precarga offline incumple su política; véase la limitación del README.
 
 ```mermaid
